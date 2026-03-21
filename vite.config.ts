@@ -14,8 +14,8 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['pwa-192x192.svg', 'pwa-512x512.svg'],
         manifest: {
-          name: 'FinTracker Pro',
-          short_name: 'FinTracker',
+          name: 'FINTrack',
+          short_name: 'FINTrack',
           description: 'Personal Finance Tracker with Cloud Sync',
           theme_color: '#ffffff',
           background_color: '#ffffff',

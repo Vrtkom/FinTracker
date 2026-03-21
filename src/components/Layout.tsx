@@ -49,7 +49,7 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `FinTrack_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `FINTrack_Backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -121,7 +121,7 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <Landmark className="w-6 h-6 text-blue-600 dark:text-blue-500" />
-            <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">FinTrack Pro</h1>
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">FINTrack</h1>
           </div>
         </div>
         <div className="flex gap-2 sm:gap-3 items-center">
@@ -148,7 +148,7 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Landmark className="w-8 h-8 text-blue-600 dark:text-blue-500" />
-                <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">FinTrack</h1>
+                <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">FINTrack</h1>
               </div>
               <div className="flex gap-1">
                 <button onClick={toggleTheme} className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors p-1.5" title="Toggle Theme">

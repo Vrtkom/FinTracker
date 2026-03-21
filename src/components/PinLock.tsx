@@ -26,7 +26,7 @@ export const PinLock = ({ isDarkMode, toggleTheme }: { isDarkMode: boolean, togg
         <div className="bg-blue-50 dark:bg-blue-900/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
           <Lock className="w-8 h-8 text-blue-600 dark:text-blue-500" />
         </div>
-        <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-white">FinTrack Pro</h2>
+        <h2 className="text-2xl font-bold mb-2 text-slate-900 dark:text-white">FINTrack</h2>
         <p className="text-sm text-slate-500 dark:text-gray-400 mb-6">Sign in to sync your financial data securely across all your devices.</p>
         
         <button 

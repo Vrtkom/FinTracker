@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Coffee, Coins, Lock, CreditCard, Wallet, CalendarDays, Activity, LayoutGrid, Trophy, Repeat, Target, Paperclip } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Coffee, Coins, Lock, CreditCard, Wallet, CalendarDays, Activity, LayoutGrid, Trophy, Repeat, Target, Paperclip, X } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getTotals, getAverages, getGamificationStreaks, getAccountBalance } from '../utils/finance';
 
@@ -16,6 +16,8 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
   
   const blurClass = hideBalances ? 'blur-[6px] opacity-50 select-none cursor-pointer' : 'cursor-pointer transition-all duration-300';
   const toggleHideBalances = () => setHideBalances(!hideBalances);
+
+  const [selectedDay, setSelectedDay] = useState<any>(null);
 
   const now = new Date();
   const curMonth = now.getMonth();
@@ -90,12 +92,66 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
   }
 
   const calendarDays = [];
-  for(let i=1; i<=daysInMonth; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth(), i);
+  let runningBalance = totals.liquidAssets; // Start with current liquid assets
+
+  for(let offset = 0; offset < 30; offset++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+    const dayOfMonth = d.getDate();
     const dayOfWeek = d.toLocaleDateString('en-US', {weekday: 'short'});
-    const isToday = i === todayDate;
-    const dayBills = recurring.filter(r => (r.day || 1) === i);
-    calendarDays.push({ i, dayOfWeek, isToday, dayBills });
+    const isToday = offset === 0;
+    
+    // Create local date string YYYY-MM-DD
+    const dateString = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    
+    // Find recurring bills for this day of the month
+    const monthStr = dateString.slice(0, 7);
+    const recurringBills = recurring.filter(r => {
+      if ((r.day || 1) !== dayOfMonth) return false;
+      // Check if this recurring bill was already posted in the month of 'd'
+      const alreadyPosted = transactions.some(t => t.date.startsWith(monthStr) && t.description === r.description);
+      return !alreadyPosted;
+    }).map(r => ({ ...r, isRecurring: true }));
+    
+    // Find one-off transactions for this specific date
+    const oneOffTxs = transactions.filter(t => t.date === dateString).map(t => ({ ...t, isRecurring: false }));
+    
+    // Combine them
+    const dayBills = [...recurringBills, ...oneOffTxs];
+
+    // Calculate projected change for the day
+    let dayNetChange = 0;
+    dayBills.forEach(b => {
+      const drAcc = accounts.find(a => a.id === b.debitAccount);
+      const crAcc = accounts.find(a => a.id === b.creditAccount);
+      
+      const drIsLiquid = drAcc && drAcc.type === 'asset' && drAcc.liquidity !== 'invested';
+      const crIsLiquid = crAcc && crAcc.type === 'asset' && crAcc.liquidity !== 'invested';
+      
+      if (drIsLiquid && !crIsLiquid) {
+        dayNetChange += b.amount;
+      } else if (!drIsLiquid && crIsLiquid) {
+        dayNetChange -= b.amount;
+      }
+    });
+
+    // If it's today, we don't add the net change to the running balance yet because today's actual transactions are already in totals.liquidAssets.
+    // Wait, future one-offs for today might not be cleared, but let's just project from tomorrow onwards for simplicity, or project from today's end.
+    // Let's just add the net change to running balance for visualization.
+    if (!isToday) {
+      runningBalance += dayNetChange;
+    }
+
+    calendarDays.push({ 
+      i: offset, 
+      date: d, 
+      dayOfMonth, 
+      dayOfWeek, 
+      isToday, 
+      dayBills, 
+      dateString,
+      projectedBalance: runningBalance,
+      netChange: dayNetChange
+    });
   }
 
   const microBudgets = accounts.filter(a => a.type === 'expense' && (a.budget || 0) > 0);
@@ -156,26 +212,113 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
 
       <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm mt-2 md:mt-6 overflow-hidden">
         <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-          <CalendarDays className="w-5 h-5 text-indigo-500" /> Monthly Calendar
+          <CalendarDays className="w-5 h-5 text-indigo-500" /> 30-Day Forecast
         </h3>
         <div className="flex gap-2 overflow-x-auto pb-2 snap-x no-scrollbar">
           {calendarDays.map(day => (
-            <div key={day.i} className={`min-w-[65px] shrink-0 p-2.5 rounded-2xl border ${day.isToday ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 shadow-sm' : 'bg-white border-slate-100 dark:bg-gray-800/50 dark:border-gray-700/50'} flex flex-col items-center snap-start`}>
+            <div 
+              key={day.i} 
+              onClick={() => setSelectedDay(day)}
+              className={`min-w-[80px] shrink-0 p-2.5 rounded-2xl border cursor-pointer transition-all hover:scale-105 ${day.isToday ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 shadow-sm' : 'bg-white border-slate-100 dark:bg-gray-800/50 dark:border-gray-700/50'} ${day.projectedBalance < 0 ? 'border-red-300 dark:border-red-800/50 bg-red-50/50 dark:bg-red-900/10' : ''} flex flex-col items-center snap-start`}
+            >
               <span className={`text-[9px] uppercase font-bold tracking-wider ${day.isToday ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-gray-500'}`}>{day.dayOfWeek}</span>
-              <span className={`text-xl font-black ${day.isToday ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-gray-200'}`}>{day.i}</span>
+              <span className={`text-xl font-black ${day.isToday ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-gray-200'}`}>{day.dayOfMonth}</span>
               <div className="w-full flex flex-col gap-1 mt-2 min-h-[16px] justify-end">
-                {day.dayBills.length > 0 ? day.dayBills.map((b, idx) => {
+                {day.dayBills.length > 0 ? day.dayBills.slice(0, 3).map((b: any, idx: number) => {
+                  const drAcc = accounts.find(a => a.id === b.debitAccount);
                   const crAcc = accounts.find(a => a.id === b.creditAccount);
-                  const isIncome = crAcc && crAcc.type === 'income';
-                  const colorClass = isIncome ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
-                  const prefix = isIncome ? '+' : '-';
+                  const drIsLiquid = drAcc && drAcc.type === 'asset' && drAcc.liquidity !== 'invested';
+                  const crIsLiquid = crAcc && crAcc.type === 'asset' && crAcc.liquidity !== 'invested';
+                  
+                  let isPositive = false;
+                  let isNeutral = false;
+                  if (drIsLiquid && !crIsLiquid) isPositive = true;
+                  else if (drIsLiquid && crIsLiquid) isNeutral = true;
+                  else if (!drIsLiquid && !crIsLiquid) isNeutral = true;
+                  
+                  const colorClass = isNeutral ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400' : 
+                                     isPositive ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 
+                                     'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+                  const prefix = isNeutral ? '' : isPositive ? '+' : '-';
                   return <div key={idx} className={`text-[9px] ${colorClass} px-1 py-0.5 rounded truncate w-full text-center font-medium`} title={b.description}>{prefix}{formatCurrency(b.amount)}</div>;
                 }) : <div className="h-1 w-1 bg-slate-200 dark:bg-gray-700 rounded-full mx-auto opacity-50"></div>}
+                {day.dayBills.length > 3 && <div className="text-[9px] text-slate-400 text-center">+{day.dayBills.length - 3} more</div>}
+              </div>
+              <div className={`mt-2 pt-2 border-t w-full text-center text-[9px] font-bold ${day.projectedBalance < 0 ? 'text-red-500 border-red-200 dark:border-red-800/50' : 'text-slate-500 border-slate-100 dark:border-gray-700/50 dark:text-gray-400'} ${blurClass}`} onClick={(e) => { e.stopPropagation(); toggleHideBalances(); }}>
+                {formatCurrency(day.projectedBalance)}
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {selectedDay && (
+        <div className="fixed inset-0 bg-slate-900/50 dark:bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-gray-800" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-gray-800">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-indigo-500" /> 
+                {selectedDay.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </h2>
+              <button onClick={() => setSelectedDay(null)} className="text-slate-400 hover:text-slate-600 dark:text-gray-500 dark:hover:text-gray-300">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="flex justify-between mb-6 bg-slate-50 dark:bg-gray-800/50 p-4 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                <div>
+                  <p className="text-[10px] uppercase text-slate-500 dark:text-gray-400 font-bold mb-1">Net Change</p>
+                  <p className={`font-black ${selectedDay.netChange >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {selectedDay.netChange >= 0 ? '+' : ''}{formatCurrency(selectedDay.netChange)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] uppercase text-slate-500 dark:text-gray-400 font-bold mb-1">Proj. Balance</p>
+                  <p className={`font-black ${blurClass} ${selectedDay.projectedBalance < 0 ? 'text-red-500' : 'text-slate-900 dark:text-white'}`} onClick={toggleHideBalances}>
+                    {formatCurrency(selectedDay.projectedBalance)}
+                  </p>
+                </div>
+              </div>
+
+              <h3 className="text-sm font-bold text-slate-800 dark:text-gray-200 mb-3 uppercase tracking-wider">Scheduled Events</h3>
+              {selectedDay.dayBills.length > 0 ? (
+                <ul className="space-y-2 max-h-[40vh] overflow-y-auto pr-2">
+                  {selectedDay.dayBills.map((b: any, idx: number) => {
+                    const drAcc = accounts.find(a => a.id === b.debitAccount);
+                    const crAcc = accounts.find(a => a.id === b.creditAccount);
+                    const drIsLiquid = drAcc && drAcc.type === 'asset' && drAcc.liquidity !== 'invested';
+                    const crIsLiquid = crAcc && crAcc.type === 'asset' && crAcc.liquidity !== 'invested';
+                    
+                    let isPositive = false;
+                    let isNeutral = false;
+                    if (drIsLiquid && !crIsLiquid) isPositive = true;
+                    else if (drIsLiquid && crIsLiquid) isNeutral = true;
+                    else if (!drIsLiquid && !crIsLiquid) isNeutral = true;
+                    
+                    const amountColor = isNeutral ? 'text-slate-500 dark:text-slate-400' : 
+                                        isPositive ? 'text-emerald-600 dark:text-emerald-400' : 
+                                        'text-slate-900 dark:text-white';
+                    const prefix = isNeutral ? '' : isPositive ? '+' : '-';
+                    return (
+                      <li key={idx} className="p-3 bg-slate-50 dark:bg-gray-800/50 rounded-xl border border-slate-100 dark:border-gray-700/50 flex justify-between items-center">
+                        <div>
+                          <p className="font-medium text-slate-800 dark:text-gray-200 text-sm">{b.description}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5 uppercase tracking-wider">
+                            {b.isRecurring ? 'Recurring' : 'One-off'}
+                          </p>
+                        </div>
+                        <span className={`font-bold ${amountColor}`}>{prefix}{formatCurrency(b.amount)}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="text-center text-slate-500 dark:text-gray-400 py-8 text-sm">No events scheduled for this day.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2 md:mt-6">
         <div className="lg:col-span-2 space-y-6">
