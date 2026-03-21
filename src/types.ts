@@ -32,6 +32,7 @@ export interface Transaction {
 }
 
 export interface Recurring {
+  id: string;
   description: string;
   amount: number;
   debitAccount: string;

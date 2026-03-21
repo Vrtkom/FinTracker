@@ -104,7 +104,7 @@ service cloud.firestore {
              (!('expenseType' in data) || data.expenseType in ['need', 'want']) &&
              (!('budget' in data) || data.budget is number) &&
              (!('excludeFromForecast' in data) || data.excludeFromForecast is bool) &&
-             (!('pots' in data) || (data.pots is string && data.pots.size() < 100000));
+             (!('pots' in data) || (data.pots is list && data.pots.size() < 100));
     }
 
     function isValidTransaction() {

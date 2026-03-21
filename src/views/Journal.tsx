@@ -131,7 +131,7 @@ export const Journal = () => {
     if (txRecurring) {
       const txDay = parseInt(txDate.split('-')[2], 10);
       const isDup = recurring.some(r => r.description === txDesc && r.amount === amount && r.debitAccount === txDebit && r.creditAccount === txCredit);
-      if (!isDup) setRecurring([...recurring, { description: txDesc, amount, debitAccount: txDebit, creditAccount: txCredit, day: txDay }]);
+      if (!isDup) setRecurring([...recurring, { id: Date.now().toString() + '_rec', description: txDesc, amount, debitAccount: txDebit, creditAccount: txCredit, day: txDay }]);
     }
 
     setTransactions([...transactions, newTx]);

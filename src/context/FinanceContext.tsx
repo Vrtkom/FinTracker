@@ -14,13 +14,13 @@ interface FinanceContextType {
   hideBalances: boolean;
   setHideBalances: (val: boolean) => void;
   accounts: Account[];
-  setAccounts: (accs: Account[]) => void;
+  setAccounts: (accs: Account[]) => Promise<void>;
   transactions: Transaction[];
-  setTransactions: (txs: Transaction[]) => void;
+  setTransactions: (txs: Transaction[]) => Promise<void>;
   recurring: Recurring[];
-  setRecurring: (recs: Recurring[]) => void;
+  setRecurring: (recs: Recurring[]) => Promise<void>;
   goals: Goal[];
-  setGoals: (goals: Goal[]) => void;
+  setGoals: (goals: Goal[]) => Promise<void>;
   
   showRecurringModal: boolean;
   setShowRecurringModal: (val: boolean) => void;
@@ -164,10 +164,34 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const migrateLocalData = async () => {
     if (!user) return;
     try {
-      const localAccounts = JSON.parse(localStorage.getItem('fintrack_accounts') || '[]');
-      const localTransactions = JSON.parse(localStorage.getItem('fintrack_transactions') || '[]');
-      const localRecurring = JSON.parse(localStorage.getItem('fintrack_recurring') || '[]');
-      const localGoals = JSON.parse(localStorage.getItem('fintrack_goals') || '[]');
+      const rawAccounts = JSON.parse(localStorage.getItem('fintrack_accounts') || '[]');
+      const rawTransactions = JSON.parse(localStorage.getItem('fintrack_transactions') || '[]');
+      const rawRecurring = JSON.parse(localStorage.getItem('fintrack_recurring') || '[]');
+      const rawGoals = JSON.parse(localStorage.getItem('fintrack_goals') || '[]');
+
+      const localAccounts = rawAccounts.map((a: any) => ({
+        ...a,
+        id: a.id || Math.random().toString(36).substr(2, 9),
+        isArchived: a.isArchived ?? false,
+        type: ['asset', 'liability', 'equity', 'income', 'expense'].includes(a.type) ? a.type : 'asset'
+      }));
+
+      const localTransactions = rawTransactions.map((t: any) => ({
+        ...t,
+        id: t.id || Math.random().toString(36).substr(2, 9),
+        cleared: t.cleared ?? false,
+        receipt: t.receipt ?? null
+      }));
+
+      const localRecurring = rawRecurring.map((r: any) => ({
+        ...r,
+        id: r.id || Math.random().toString(36).substr(2, 9)
+      }));
+
+      const localGoals = rawGoals.map((g: any) => ({
+        ...g,
+        id: g.id || Math.random().toString(36).substr(2, 9)
+      }));
 
       if (localAccounts.length > 0) await syncCollection('accounts', accounts, localAccounts);
       if (localTransactions.length > 0) await syncCollection('transactions', transactions, localTransactions);
@@ -200,10 +224,10 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
 
   const clearAllData = async () => {
     if (!user) return;
-    setAccounts([]);
-    setTransactions([]);
-    setRecurring([]);
-    setGoals([]);
+    await setAccounts([]);
+    await setTransactions([]);
+    await setRecurring([]);
+    await setGoals([]);
     localStorage.removeItem('fintrack_last_checkin');
   };
 

@@ -54,22 +54,51 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
     URL.revokeObjectURL(url);
   };
 
-  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const importData = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const backup = JSON.parse(e.target?.result as string);
         if (backup.accounts && backup.transactions) {
-          setAccounts(backup.accounts);
-          setTransactions(backup.transactions);
-          if (backup.recurring) setRecurring(backup.recurring);
-          if (backup.goals) setGoals(backup.goals);
+          // Ensure imported data matches current schema requirements
+          const accountsToImport = backup.accounts.map((a: any) => ({
+            ...a,
+            id: a.id || Math.random().toString(36).substr(2, 9),
+            isArchived: a.isArchived ?? false,
+            type: ['asset', 'liability', 'equity', 'income', 'expense'].includes(a.type) ? a.type : 'asset'
+          }));
+          
+          const transactionsToImport = backup.transactions.map((t: any) => ({
+            ...t,
+            id: t.id || Math.random().toString(36).substr(2, 9),
+            cleared: t.cleared ?? false,
+            receipt: t.receipt ?? null
+          }));
+          
+          const recurringToImport = (backup.recurring || []).map((r: any) => ({
+            ...r,
+            id: r.id || Math.random().toString(36).substr(2, 9)
+          }));
+          
+          const goalsToImport = (backup.goals || []).map((g: any) => ({
+            ...g,
+            id: g.id || Math.random().toString(36).substr(2, 9)
+          }));
+
+          await setAccounts(accountsToImport);
+          await setTransactions(transactionsToImport);
+          if (recurringToImport.length > 0) await setRecurring(recurringToImport);
+          if (goalsToImport.length > 0) await setGoals(goalsToImport);
+          
           alert("Data successfully restored from Backup!");
-        } else alert("Invalid backup file format.");
+        } else {
+          alert("Invalid backup file format.");
+        }
       } catch (err) { 
-        alert("Error reading backup file."); 
+        console.error("Import error:", err);
+        alert("Error reading backup file or syncing to cloud."); 
       }
       event.target.value = ''; 
     };
