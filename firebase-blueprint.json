@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "Account": {
+      "title": "Account",
+      "description": "A financial account (asset, liability, equity, income, expense)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["asset", "liability", "equity", "income", "expense"] },
+        "liquidity": { "type": "string", "enum": ["liquid", "invested"] },
+        "expenseType": { "type": "string", "enum": ["need", "want"] },
+        "budget": { "type": "number" },
+        "excludeFromForecast": { "type": "boolean" },
+        "isArchived": { "type": "boolean" },
+        "pots": { "type": "string", "description": "JSON stringified array of pots" },
+        "uid": { "type": "string" }
+      },
+      "required": ["id", "name", "type", "isArchived", "uid"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction between two accounts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "debitAccount": { "type": "string" },
+        "creditAccount": { "type": "string" },
+        "cleared": { "type": "boolean" },
+        "receipt": { "type": "string" },
+        "uid": { "type": "string" }
+      },
+      "required": ["id", "date", "description", "amount", "debitAccount", "creditAccount", "cleared", "uid"]
+    },
+    "Recurring": {
+      "title": "Recurring",
+      "description": "A recurring template for transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "debitAccount": { "type": "string" },
+        "creditAccount": { "type": "string" },
+        "day": { "type": "number" },
+        "uid": { "type": "string" }
+      },
+      "required": ["id", "description", "amount", "debitAccount", "creditAccount", "day", "uid"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "A smart financial goal linked to an account",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "linkedAccountId": { "type": "string" },
+        "uid": { "type": "string" }
+      },
+      "required": ["id", "name", "targetAmount", "linkedAccountId", "uid"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/Account" },
+      "description": "User's financial accounts"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "User's financial transactions"
+    },
+    "/users/{userId}/recurring/{recurringId}": {
+      "schema": { "$ref": "#/entities/Recurring" },
+      "description": "User's recurring templates"
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": { "$ref": "#/entities/Goal" },
+      "description": "User's financial goals"
+    }
+  }
+}

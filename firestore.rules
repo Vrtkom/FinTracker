@@ -1,0 +1,177 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}/accounts
+    // Document ID: accountId
+    // Fields:
+    //   - id: string
+    //   - name: string
+    //   - type: string (asset, liability, equity, income, expense)
+    //   - liquidity: string (optional)
+    //   - expenseType: string (optional)
+    //   - budget: number (optional)
+    //   - excludeFromForecast: boolean (optional)
+    //   - isArchived: boolean
+    //   - pots: string (optional, JSON)
+    //   - uid: string
+    //
+    // Collection: users/{userId}/transactions
+    // Document ID: transactionId
+    // Fields:
+    //   - id: string
+    //   - date: string
+    //   - description: string
+    //   - amount: number
+    //   - debitAccount: string
+    //   - creditAccount: string
+    //   - cleared: boolean
+    //   - receipt: string (optional)
+    //   - uid: string
+    //
+    // Collection: users/{userId}/recurring
+    // Document ID: recurringId
+    // Fields:
+    //   - id: string
+    //   - description: string
+    //   - amount: number
+    //   - debitAccount: string
+    //   - creditAccount: string
+    //   - day: number
+    //   - uid: string
+    //
+    // Collection: users/{userId}/goals
+    // Document ID: goalId
+    // Fields:
+    //   - id: string
+    //   - name: string
+    //   - targetAmount: number
+    //   - linkedAccountId: string
+    //   - uid: string
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+    
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+    
+    function uidNotModified() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidAccount() {
+      let data = request.resource.data;
+      return hasRequiredFields(['id', 'name', 'type', 'isArchived', 'uid']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.type in ['asset', 'liability', 'equity', 'income', 'expense'] &&
+             data.isArchived is bool &&
+             (!('liquidity' in data) || data.liquidity in ['liquid', 'invested']) &&
+             (!('expenseType' in data) || data.expenseType in ['need', 'want']) &&
+             (!('budget' in data) || data.budget is number) &&
+             (!('excludeFromForecast' in data) || data.excludeFromForecast is bool) &&
+             (!('pots' in data) || (data.pots is string && data.pots.size() < 100000));
+    }
+
+    function isValidTransaction() {
+      let data = request.resource.data;
+      return hasRequiredFields(['id', 'date', 'description', 'amount', 'debitAccount', 'creditAccount', 'cleared', 'uid']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.date is string && data.date.size() > 0 && data.date.size() < 50 &&
+             data.description is string && data.description.size() >= 0 && data.description.size() < 500 &&
+             data.amount is number &&
+             data.debitAccount is string && data.debitAccount.size() > 0 && data.debitAccount.size() < 100 &&
+             data.creditAccount is string && data.creditAccount.size() > 0 && data.creditAccount.size() < 100 &&
+             data.cleared is bool &&
+             (!('receipt' in data) || data.receipt == null || (data.receipt is string && data.receipt.size() < 1000000));
+    }
+
+    function isValidRecurring() {
+      let data = request.resource.data;
+      return hasRequiredFields(['id', 'description', 'amount', 'debitAccount', 'creditAccount', 'day', 'uid']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.description is string && data.description.size() >= 0 && data.description.size() < 500 &&
+             data.amount is number &&
+             data.debitAccount is string && data.debitAccount.size() > 0 && data.debitAccount.size() < 100 &&
+             data.creditAccount is string && data.creditAccount.size() > 0 && data.creditAccount.size() < 100 &&
+             data.day is number && data.day >= 1 && data.day <= 31;
+    }
+
+    function isValidGoal() {
+      let data = request.resource.data;
+      return hasRequiredFields(['id', 'name', 'targetAmount', 'linkedAccountId', 'uid']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.targetAmount is number && data.targetAmount >= 0 &&
+             data.linkedAccountId is string && data.linkedAccountId.size() > 0 && data.linkedAccountId.size() < 100;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      match /accounts/{accountId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidAccount() && uidUnchanged();
+        allow update: if isOwner(userId) && isDocOwner() && isValidAccount() && uidNotModified();
+        allow delete: if isOwner(userId) && isDocOwner();
+      }
+      
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidTransaction() && uidUnchanged();
+        allow update: if isOwner(userId) && isDocOwner() && isValidTransaction() && uidNotModified();
+        allow delete: if isOwner(userId) && isDocOwner();
+      }
+      
+      match /recurring/{recurringId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidRecurring() && uidUnchanged();
+        allow update: if isOwner(userId) && isDocOwner() && isValidRecurring() && uidNotModified();
+        allow delete: if isOwner(userId) && isDocOwner();
+      }
+      
+      match /goals/{goalId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidGoal() && uidUnchanged();
+        allow update: if isOwner(userId) && isDocOwner() && isValidGoal() && uidNotModified();
+        allow delete: if isOwner(userId) && isDocOwner();
+      }
+    }
+  }
+}

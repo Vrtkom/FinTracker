@@ -1,0 +1,441 @@
+import React, { useMemo } from 'react';
+import { CalendarSearch, GitMerge, FastForward, FlaskConical, Hash, ChevronUp, ChevronDown } from 'lucide-react';
+import { useFinance } from '../context/FinanceContext';
+import { formatCurrency, getTotals, getAccountBalance } from '../utils/finance';
+import { Line } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart } from 'react-google-charts';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+
+export const Reports = () => {
+  const { accounts, transactions, recurring, customReport, setCustomReport, scenario, setScenario } = useFinance();
+  
+  const totals = useMemo(() => getTotals(accounts, transactions), [accounts, transactions]);
+
+  const genRows = (type: string) => {
+    const acts = accounts.filter(a => a.type === type);
+    if(acts.length === 0) return <div className="text-[11px] md:text-xs text-slate-400 dark:text-gray-500 italic py-2">No accounts</div>;
+    return acts.map(acc => {
+      const bal = getAccountBalance(acc.id, accounts, transactions);
+      if (acc.isArchived && bal === 0) return null;
+      return (
+        <div key={acc.id} className="flex justify-between text-slate-600 dark:text-gray-300 py-2.5 md:py-2 border-b border-slate-100 dark:border-gray-800/50 last:border-0">
+          <span className="text-sm md:text-base">
+            {acc.name} {acc.isArchived && <span className="text-[10px] text-slate-400 dark:text-gray-500">(Archived)</span>}
+          </span>
+          <span className="font-medium text-sm md:text-base">{formatCurrency(bal)}</span>
+        </div>
+      );
+    });
+  };
+
+  const generateReport = (e: React.FormEvent) => {
+    e.preventDefault();
+    const s = customReport.startDate;
+    const eDate = customReport.endDate;
+    const detailed = customReport.showDetails;
+    const repType = customReport.type;
+
+    if (!s || !eDate) return;
+
+    const filtered = transactions.filter(t => t.date >= s && t.date <= eDate);
+
+    let inTotal = 0, outTotal = 0;
+    const flows: any = { in: {}, out: {}, all: [] };
+
+    if (repType === 'pnl') {
+      filtered.forEach(t => {
+        const crAcc = accounts.find(a => a.id === t.creditAccount);
+        const drAcc = accounts.find(a => a.id === t.debitAccount);
+
+        if (crAcc && crAcc.type === 'income') {
+          inTotal += t.amount;
+          if (!flows.in[crAcc.id]) flows.in[crAcc.id] = { name: crAcc.name, amount: 0, txs: [] };
+          flows.in[crAcc.id].amount += t.amount;
+          flows.in[crAcc.id].txs.push(t);
+        }
+        if (drAcc && drAcc.type === 'expense') {
+          outTotal += t.amount;
+          if (!flows.out[drAcc.id]) flows.out[drAcc.id] = { name: drAcc.name, amount: 0, txs: [] };
+          flows.out[drAcc.id].amount += t.amount;
+          flows.out[drAcc.id].txs.push(t);
+        }
+      });
+    } else if (repType === 'cashflow') {
+      filtered.forEach(t => {
+        const crAcc = accounts.find(a => a.id === t.creditAccount);
+        const drAcc = accounts.find(a => a.id === t.debitAccount);
+        
+        const isDebitLiquid = drAcc && drAcc.type === 'asset' && drAcc.liquidity === 'liquid';
+        const isCreditLiquid = crAcc && crAcc.type === 'asset' && crAcc.liquidity === 'liquid';
+
+        if (isDebitLiquid && !isCreditLiquid) {
+          inTotal += t.amount;
+          const sourceName = crAcc ? crAcc.name : 'Unknown Source';
+          if (!flows.in[t.creditAccount]) flows.in[t.creditAccount] = { name: sourceName, amount: 0, txs: [] };
+          flows.in[t.creditAccount].amount += t.amount;
+          flows.in[t.creditAccount].txs.push(t);
+        }
+        if (isCreditLiquid && !isDebitLiquid) {
+          outTotal += t.amount;
+          const destName = drAcc ? drAcc.name : 'Unknown Destination';
+          if (!flows.out[t.debitAccount]) flows.out[t.debitAccount] = { name: destName, amount: 0, txs: [] };
+          flows.out[t.debitAccount].amount += t.amount;
+          flows.out[t.debitAccount].txs.push(t);
+        }
+      });
+    } else if (repType === 'ledger') {
+      inTotal = filtered.reduce((sum, t) => sum + t.amount, 0); 
+      flows.all = filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); 
+    }
+
+    setCustomReport({
+      ...customReport,
+      data: { inTotal, outTotal, flows },
+      showSankey: repType === 'pnl' || repType === 'cashflow'
+    });
+  };
+
+  const clearReport = () => {
+    setCustomReport({ ...customReport, data: null, showSankey: false });
+  };
+
+  const applyScenario = (e: React.FormEvent) => {
+    e.preventDefault();
+    const desc = (document.getElementById('scenarioDesc') as HTMLInputElement).value.trim();
+    const amount = parseFloat((document.getElementById('scenarioAmt') as HTMLInputElement).value);
+    const monthOffset = parseInt((document.getElementById('scenarioMonth') as HTMLSelectElement).value);
+    if (!desc || isNaN(amount)) return;
+    setScenario({ desc, amount, monthOffset });
+  };
+
+  const clearScenario = () => setScenario(null);
+
+  const inputClasses = "w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-xl outline-none transition-all text-sm md:text-base dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500";
+
+  // Hashtag Analytics
+  const tagMap: Record<string, number> = {};
+  const todayStr = new Date().toISOString().split('T')[0];
+  
+  transactions.forEach(t => {
+    if (t.date > todayStr) return;
+    const acc = accounts.find(a => a.id === t.debitAccount);
+    if (acc && acc.type === 'expense') {
+      const tags = t.description.match(/#[\w]+/g);
+      if (tags) {
+        tags.forEach(tag => {
+          tagMap[tag] = (tagMap[tag] || 0) + t.amount;
+        });
+      }
+    }
+  });
+  const sortedTags = Object.entries(tagMap).sort((a,b) => b[1] - a[1]);
+
+  // Cash Flow Forecaster Data
+  let recNet = 0;
+  recurring.forEach(r => {
+    const cr = accounts.find(a=>a.id===r.creditAccount);
+    const dr = accounts.find(a=>a.id===r.debitAccount);
+    if (cr && cr.type === 'income') recNet += r.amount;
+    else if (dr && dr.type === 'expense') recNet -= r.amount;
+  });
+
+  let forecastStartingCash = 0;
+  accounts.forEach(acc => {
+    if (acc.type === 'asset' && acc.liquidity === 'liquid' && !acc.excludeFromForecast) {
+      forecastStartingCash += getAccountBalance(acc.id, accounts, transactions);
+    }
+  });
+
+  const fcLabels = ['Today'];
+  const fcDataOrig = [forecastStartingCash];
+  const fcDataScen = [forecastStartingCash];
+  
+  let curLOrig = forecastStartingCash;
+  let curLScen = forecastStartingCash;
+  
+  const d = new Date();
+  for(let i=1; i<=6; i++) {
+    d.setMonth(d.getMonth() + 1);
+    fcLabels.push(d.toLocaleString('default', {month:'short'}));
+    
+    curLOrig += recNet;
+    curLScen += recNet;
+    
+    if (scenario && i === scenario.monthOffset) {
+      curLScen += scenario.amount;
+    }
+    
+    fcDataOrig.push(curLOrig);
+    fcDataScen.push(curLScen);
+  }
+
+  const isDark = document.documentElement.classList.contains('dark');
+  const textColor = isDark ? '#9ca3af' : '#64748b';
+  const gridColor = isDark ? '#374151' : '#e2e8f0';
+
+  const forecastChartData = {
+    labels: fcLabels,
+    datasets: [
+      {
+        label: 'Base Projection',
+        data: fcDataOrig,
+        borderColor: '#6366f1',
+        backgroundColor: scenario ? 'transparent' : 'rgba(99, 102, 241, 0.1)',
+        borderWidth: 2,
+        fill: !scenario,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: '#6366f1'
+      },
+      ...(scenario ? [{
+        label: `Scenario: ${scenario.desc}`,
+        data: fcDataScen,
+        borderColor: '#a855f7',
+        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: '#a855f7'
+      }] : [])
+    ]
+  };
+
+  const forecastChartOptions = {
+    responsive: true, 
+    maintainAspectRatio: false,
+    plugins: { legend: { display: !!scenario, labels: { color: textColor, font: {family: 'sans-serif'} } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: textColor } },
+      y: { grid: { color: gridColor }, ticks: { color: textColor } }
+    }
+  };
+
+  // Sankey Data
+  let sankeyData = null;
+  if (customReport.showSankey && customReport.data && (customReport.type === 'pnl' || customReport.type === 'cashflow')) {
+    const rows: any[] = [];
+    let tIn = 0; let tOut = 0;
+    Object.values(customReport.data.flows.in).forEach((acc: any) => { if(acc.amount>0) { rows.push([acc.name + ' (In)', 'Budget Pool', acc.amount]); tIn += acc.amount; } });
+    Object.values(customReport.data.flows.out).forEach((acc: any) => { if(acc.amount>0) { rows.push(['Budget Pool', acc.name + ' (Out)', acc.amount]); tOut += acc.amount; } });
+    
+    if(tIn > tOut && tOut > 0) rows.push(['Budget Pool', 'Saved / Unspent', tIn - tOut]);
+    else if (tOut > tIn && tIn > 0) rows.push(['Savings / Debt', 'Budget Pool', tOut - tIn]);
+
+    if (rows.length > 0) {
+      sankeyData = [
+        ['From', 'To', 'Amount'],
+        ...rows
+      ];
+    }
+  }
+
+  return (
+    <div className="space-y-4 md:space-y-6">
+      <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-4 md:mb-8">Statements & Insights</h2>
+      
+      <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm mb-6 md:mb-8">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+          <CalendarSearch className="w-5 h-5 text-blue-500" /> Custom Date Range Report
+        </h3>
+        <p className="text-sm text-slate-500 dark:text-gray-400 mb-5">Analyze cash flows and transactions over any specific period.</p>
+        <form onSubmit={generateReport} className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row gap-4 md:items-end">
+            <div className="w-full md:w-auto flex-1">
+              <label className="block text-[10px] font-medium text-slate-500 mb-1">Report Type</label>
+              <select value={customReport.type} onChange={e => setCustomReport({...customReport, type: e.target.value as any})} className={`${inputClasses} py-2.5`}>
+                <option value="pnl">P&L (Income vs Expense)</option>
+                <option value="cashflow">Asset Cash Flow</option>
+                <option value="ledger">Full Ledger</option>
+              </select>
+            </div>
+            <div className="w-full md:w-auto flex-1">
+              <label className="block text-[10px] font-medium text-slate-500 mb-1">From Date</label>
+              <input type="date" value={customReport.startDate} onChange={e => setCustomReport({...customReport, startDate: e.target.value})} className={`${inputClasses} py-2.5`} required />
+            </div>
+            <div className="w-full md:w-auto flex-1">
+              <label className="block text-[10px] font-medium text-slate-500 mb-1">To Date</label>
+              <input type="date" value={customReport.endDate} onChange={e => setCustomReport({...customReport, endDate: e.target.value})} className={`${inputClasses} py-2.5`} required />
+            </div>
+          </div>
+          <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+            <div className="flex items-center gap-2 px-2">
+              <input type="checkbox" id="repDetailed" checked={customReport.showDetails} onChange={e => setCustomReport({...customReport, showDetails: e.target.checked})} className="w-4 h-4 rounded border-slate-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800 cursor-pointer accent-blue-600" />
+              <label htmlFor="repDetailed" className="text-sm font-medium text-slate-600 dark:text-gray-400 cursor-pointer">Detailed View</label>
+            </div>
+            <div className="flex gap-2 w-full md:w-auto">
+              <button type="submit" className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold transition-colors text-sm shadow-md shadow-blue-500/20">Generate</button>
+              {customReport.data && <button type="button" onClick={clearReport} className="flex-1 md:flex-none bg-slate-200 hover:bg-slate-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 px-4 py-2.5 rounded-xl font-bold transition-colors text-sm">Clear</button>}
+            </div>
+          </div>
+        </form>
+        
+        {customReport.data && (
+          <div className="mt-6 pt-6 border-t border-slate-100 dark:border-gray-800 animate-fade-in">
+            {(customReport.type === 'pnl' || customReport.type === 'cashflow') ? (
+              <>
+                <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Report Summary</h4>
+                <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6">
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 md:p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                    <p className="text-[10px] md:text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1 font-bold">{customReport.type === 'pnl' ? 'Income' : 'Inflow'}</p>
+                    <p className="text-base md:text-xl font-black text-emerald-700 dark:text-emerald-300">{formatCurrency(customReport.data.inTotal)}</p>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-900/20 p-3 md:p-4 rounded-xl border border-red-100 dark:border-red-900/30 text-center">
+                    <p className="text-[10px] md:text-xs text-red-600 dark:text-red-400 uppercase tracking-wider mb-1 font-bold">{customReport.type === 'pnl' ? 'Expense' : 'Outflow'}</p>
+                    <p className="text-base md:text-xl font-black text-red-700 dark:text-red-300">{formatCurrency(customReport.data.outTotal)}</p>
+                  </div>
+                  <div className="bg-slate-100 dark:bg-gray-800 p-3 md:p-4 rounded-xl border border-slate-200 dark:border-gray-700 text-center">
+                    <p className="text-[10px] md:text-xs text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-1 font-bold">Net Flow</p>
+                    <p className={`text-base md:text-xl font-black ${customReport.data.inTotal - customReport.data.outTotal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {customReport.data.inTotal - customReport.data.outTotal > 0 ? '+' : ''}{formatCurrency(customReport.data.inTotal - customReport.data.outTotal)}
+                    </p>
+                  </div>
+                </div>
+                
+                {Object.keys(customReport.data.flows.in).length > 0 && (
+                  <div className="mt-8 border-t border-slate-100 dark:border-gray-800 pt-6 animate-fade-in">
+                    <button type="button" onClick={() => setCustomReport({...customReport, showSankey: !customReport.showSankey})} className="w-full flex justify-between items-center group focus:outline-none">
+                      <h4 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2"><GitMerge className="w-5 h-5 text-indigo-500" /> Cash Flow Map</h4>
+                      <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-gray-800 group-hover:bg-slate-200 dark:group-hover:bg-gray-700 transition-colors">
+                        {customReport.showSankey ? <ChevronUp className="w-5 h-5 text-slate-500 dark:text-gray-400" /> : <ChevronDown className="w-5 h-5 text-slate-500 dark:text-gray-400" />}
+                      </div>
+                    </button>
+                    
+                    {customReport.showSankey && sankeyData && (
+                      <div className="mt-6 w-full h-[350px]">
+                        <Chart
+                          chartType="Sankey"
+                          width="100%"
+                          height="100%"
+                          data={sankeyData}
+                          options={{
+                            sankey: {
+                              node: {
+                                nodePadding: 30,
+                                width: 12,
+                                colors: ['#3b82f6', '#8b5cf6', '#10b981', '#f43f5e', '#f59e0b', '#0ea5e9', '#ec4899', '#14b8a6'],
+                                label: { color: isDark ? '#ffffff' : '#1f2937', fontName: 'sans-serif', fontSize: 12, bold: true }
+                              },
+                              link: { colorMode: 'gradient', fillOpacity: 0.85 }
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Ledger Summary</h4>
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 md:p-6 rounded-2xl border border-blue-100 dark:border-blue-900/30 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] md:text-xs text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1 font-bold">Total Activity Volume</p>
+                    <p className="text-2xl md:text-3xl font-black text-blue-700 dark:text-blue-300">{formatCurrency(customReport.data.inTotal)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-blue-800 dark:text-blue-200">{customReport.data.flows.all.length} Entries</p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-8">
+        <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col">
+          <h3 className="text-xl md:text-2xl font-bold mb-6 text-slate-900 dark:text-white pb-4 border-b border-slate-200 dark:border-gray-800">Income Statement</h3>
+          <div className="space-y-6 md:space-y-8 flex-1">
+            <div>
+              <h4 className="font-bold text-emerald-600 dark:text-emerald-400 mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-widest bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-transparent inline-block px-2.5 py-1 rounded-lg">Revenues (Cr)</h4>
+              <div className="pl-3 md:pl-4 border-l-2 border-emerald-200 dark:border-emerald-900 space-y-1">{genRows('income')}</div>
+              <div className="flex justify-between font-bold text-slate-900 dark:text-white mt-4 pt-4 border-t border-slate-200 dark:border-gray-800 text-base md:text-lg"><span>Total Income</span><span className="text-emerald-600 dark:text-emerald-400">{formatCurrency(totals.income)}</span></div>
+            </div>
+            <div>
+              <h4 className="font-bold text-red-600 dark:text-red-400 mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-widest bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-transparent inline-block px-2.5 py-1 rounded-lg">Expenses (Dr)</h4>
+              <div className="pl-3 md:pl-4 border-l-2 border-red-200 dark:border-red-900 space-y-1">{genRows('expense')}</div>
+              <div className="flex justify-between font-bold text-slate-900 dark:text-white mt-4 pt-4 border-t border-slate-200 dark:border-gray-800 text-base md:text-lg"><span>Total Expenses</span><span className="text-red-600 dark:text-red-400">{formatCurrency(totals.expenses)}</span></div>
+            </div>
+          </div>
+          <div className={`flex justify-between items-center mt-8 md:mt-10 p-5 md:p-6 rounded-2xl ${totals.netIncome >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30' : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30'}`}>
+            <span className="text-base md:text-xl font-bold">Net Profit</span><span className="text-xl md:text-3xl font-bold">{formatCurrency(totals.netIncome)}</span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col">
+          <h3 className="text-xl md:text-2xl font-bold mb-6 text-slate-900 dark:text-white pb-4 border-b border-slate-200 dark:border-gray-800">Balance Sheet</h3>
+          <div className="space-y-6 md:space-y-8 flex-1">
+            <div>
+              <h4 className="font-bold text-blue-600 dark:text-blue-400 mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-widest bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-transparent inline-block px-2.5 py-1 rounded-lg">Assets (Dr)</h4>
+              <div className="pl-3 md:pl-4 border-l-2 border-blue-200 dark:border-blue-900 space-y-1">{genRows('asset')}</div>
+              <div className="flex justify-between font-bold text-slate-900 dark:text-white mt-4 pt-4 border-t border-slate-200 dark:border-gray-800 text-base md:text-lg"><span>Total Assets</span><span className="text-blue-600 dark:text-blue-400">{formatCurrency(totals.assets)}</span></div>
+            </div>
+            <div>
+              <h4 className="font-bold text-orange-600 dark:text-orange-400 mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-widest bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-transparent inline-block px-2.5 py-1 rounded-lg">Liabilities (Cr)</h4>
+              <div className="pl-3 md:pl-4 border-l-2 border-orange-200 dark:border-orange-900 space-y-1">{genRows('liability')}</div>
+              <div className="flex justify-between font-bold text-slate-900 dark:text-white mt-4 pt-4 border-t border-slate-200 dark:border-gray-800 text-base md:text-lg"><span>Total Liabilities</span><span className="text-orange-600 dark:text-orange-400">{formatCurrency(totals.liabilities)}</span></div>
+            </div>
+            <div>
+              <h4 className="font-bold text-purple-600 dark:text-purple-400 mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-widest bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-transparent inline-block px-2.5 py-1 rounded-lg">Equity (Cr)</h4>
+              <div className="pl-3 md:pl-4 border-l-2 border-purple-200 dark:border-purple-900 space-y-1">{genRows('equity')}</div>
+              <div className="flex justify-between font-bold text-slate-900 dark:text-white mt-4 pt-4 border-t border-slate-200 dark:border-gray-800 text-base md:text-lg"><span>Total Equity</span><span className="text-purple-600 dark:text-purple-400">{formatCurrency(totals.equity)}</span></div>
+            </div>
+          </div>
+          <div className="flex justify-between items-center mt-8 md:mt-10 p-5 md:p-6 rounded-2xl bg-slate-100 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white shadow-inner">
+            <span className="text-base md:text-xl font-bold">Calculated Net Worth</span><span className="text-xl md:text-3xl font-bold">{formatCurrency(totals.netWorth)}</span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm col-span-1 lg:col-span-2">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2"><FastForward className="w-5 h-5 text-indigo-500" /> Cash Flow Forecaster</h3>
+          <p className="text-sm text-slate-500 dark:text-gray-400 mb-6">6-month projection of your active Liquid Cash (ignores "Stashed" accounts) based on your saved recurring templates.</p>
+          <div className="h-64 w-full">
+            <Line data={forecastChartData} options={forecastChartOptions} />
+          </div>
+          
+          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-gray-800">
+            <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-1 flex items-center gap-2"><FlaskConical className="w-4 h-4 text-purple-500" /> What-If Scenario Simulator</h4>
+            <p className="text-xs text-slate-500 dark:text-gray-400 mb-4">Test a hypothetical expense or income to see how it affects your 6-month runway.</p>
+            <form onSubmit={applyScenario} className="flex flex-col md:flex-row gap-3 items-end">
+              <div className="flex-1 w-full">
+                <label className="block text-[10px] font-medium text-slate-500 mb-1">Scenario Description</label>
+                <input type="text" id="scenarioDesc" placeholder="e.g. Buy a Bike, Job Loss" defaultValue={scenario?.desc || ''} className={`${inputClasses} py-2.5`} required />
+              </div>
+              <div className="w-full md:w-36">
+                <label className="block text-[10px] font-medium text-slate-500 mb-1">Amount (+ or -)</label>
+                <input type="number" id="scenarioAmt" placeholder="-50000" defaultValue={scenario?.amount || ''} className={`${inputClasses} py-2.5`} required />
+              </div>
+              <div className="w-full md:w-40">
+                <label className="block text-[10px] font-medium text-slate-500 mb-1">When to apply?</label>
+                <select id="scenarioMonth" defaultValue={scenario?.monthOffset || 1} className={`${inputClasses} py-2.5`}>
+                  {[1,2,3,4,5,6].map(m => <option key={m} value={m}>In {m} Month{m>1?'s':''}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-2 w-full md:w-auto">
+                <button type="submit" className="flex-1 md:flex-none bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-bold transition-colors text-sm shadow-md shadow-purple-500/20">Simulate</button>
+                {scenario && <button type="button" onClick={clearScenario} className="flex-none bg-slate-200 hover:bg-slate-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 px-4 py-2.5 rounded-xl font-bold transition-colors text-sm">Clear</button>}
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm col-span-1 lg:col-span-2">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2"><Hash className="w-5 h-5 text-blue-500" /> Hashtag Analytics & Trips</h3>
+          <p className="text-sm text-slate-500 dark:text-gray-400 mb-6">Total spending extracted from tags (e.g. #GoaTrip) in your expense descriptions.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sortedTags.length > 0 ? sortedTags.map(([tag, amt]) => (
+              <div key={tag} className="bg-slate-50 dark:bg-gray-800/50 p-4 rounded-xl border border-slate-100 dark:border-gray-700/50 flex justify-between items-center">
+                <span className="font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg">{tag}</span>
+                <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(amt)}</span>
+              </div>
+            )) : <div className="col-span-full text-slate-400 dark:text-gray-500 text-sm italic p-4 text-center border border-dashed border-slate-200 dark:border-gray-700 rounded-xl">No #hashtags found in expense entries.</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
