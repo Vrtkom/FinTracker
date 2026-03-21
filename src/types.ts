@@ -29,6 +29,7 @@ export interface Transaction {
   creditAccount: string;
   cleared: boolean;
   receipt: string | null;
+  tags?: string[];
 }
 
 export interface Recurring {

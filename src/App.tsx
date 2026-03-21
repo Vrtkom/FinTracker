@@ -11,6 +11,7 @@ import { Dashboard } from './views/Dashboard';
 import { Accounts } from './views/Accounts';
 import { Journal } from './views/Journal';
 import { Reports } from './views/Reports';
+import { Insights } from './views/Insights';
 import { RecurringModal } from './components/Modals/RecurringModal';
 import { ManageRecurringModal } from './components/Modals/ManageRecurringModal';
 import { VirtualPotsModal } from './components/Modals/VirtualPotsModal';
@@ -88,6 +89,7 @@ const AppContent = () => {
       {activeTab === 'dashboard' && <Dashboard switchTab={setActiveTab} />}
       {activeTab === 'accounts' && <Accounts />}
       {activeTab === 'transactions' && <Journal />}
+      {activeTab === 'insights' && <Insights />}
       {activeTab === 'reports' && <Reports />}
       
       <RecurringModal />

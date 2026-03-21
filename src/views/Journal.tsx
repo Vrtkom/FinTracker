@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, ArrowUpDown, ArrowLeftRight, Camera, CheckCircle, ShieldCheck, Paperclip, CheckCircle2, Copy, Trash2 } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, ArrowLeftRight, Camera, CheckCircle, ShieldCheck, Paperclip, CheckCircle2, Copy, Trash2, Download } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
 
@@ -17,6 +17,7 @@ export const Journal = () => {
   const [txRecurring, setTxRecurring] = useState(false);
   const [txCleared, setTxCleared] = useState(true);
   const [txReceiptBase64, setTxReceiptBase64] = useState<string | null>(null);
+  const [txTags, setTxTags] = useState('');
   
   const [showDebitOptions, setShowDebitOptions] = useState(false);
   const [showCreditOptions, setShowCreditOptions] = useState(false);
@@ -125,7 +126,8 @@ export const Journal = () => {
       debitAccount: txDebit, 
       creditAccount: txCredit,
       cleared: txCleared,
-      receipt: txReceiptBase64 
+      receipt: txReceiptBase64,
+      tags: txTags.split(',').map(t => t.trim()).filter(Boolean)
     };
     
     if (txRecurring) {
@@ -147,6 +149,7 @@ export const Journal = () => {
     setTxRecurring(false);
     setTxCleared(true);
     setTxReceiptBase64(null);
+    setTxTags('');
   };
 
   const duplicateTransaction = (id: string) => {
@@ -168,6 +171,9 @@ export const Journal = () => {
     if (crAcc) {
       setTxCredit(crAcc.id);
       setTxCreditSearch(`${crAcc.name} (${crAcc.type})`);
+    }
+    if (tx.tags) {
+      setTxTags(tx.tags.join(', '));
     }
     
     window.scrollTo(0, 0);
@@ -209,10 +215,38 @@ export const Journal = () => {
       ));
   };
 
+  const exportCSV = () => {
+    const headers = ['Date', 'Description', 'Amount', 'Debit Account', 'Credit Account', 'Cleared', 'Tags'];
+    const rows = transactions.map(t => {
+      const drAcc = accounts.find(a => a.id === t.debitAccount)?.name || 'Unknown';
+      const crAcc = accounts.find(a => a.id === t.creditAccount)?.name || 'Unknown';
+      return [
+        t.date,
+        `"${t.description.replace(/"/g, '""')}"`,
+        t.amount,
+        `"${drAcc}"`,
+        `"${crAcc}"`,
+        t.cleared ? 'Yes' : 'No',
+        `"${(t.tags || []).join(', ')}"`
+      ].join(',');
+    });
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `FINTrack_Transactions_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   let filteredTxs = [...transactions];
   if (filterSearch) {
     const term = filterSearch.toLowerCase();
-    filteredTxs = filteredTxs.filter(t => t.description.toLowerCase().includes(term));
+    filteredTxs = filteredTxs.filter(t => 
+      t.description.toLowerCase().includes(term) || 
+      (t.tags && t.tags.some(tag => tag.toLowerCase().includes(term)))
+    );
   }
   if (filterAccount) {
     filteredTxs = filteredTxs.filter(t => t.debitAccount === filterAccount || t.creditAccount === filterAccount);
@@ -240,12 +274,20 @@ export const Journal = () => {
     <div className="space-y-4 md:space-y-6">
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Journal</h2>
-        <button 
-          onClick={() => setIsAddingTx(!isAddingTx)} 
-          className={`${isAddingTx ? 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700 text-white dark:hover:bg-blue-500 shadow-lg shadow-blue-500/20'} px-4 py-2.5 md:px-6 md:py-3 rounded-xl font-bold flex items-center gap-2 text-sm md:text-base transition-all`}
-        >
-          {isAddingTx ? 'Cancel' : <><Plus className="w-4 h-4 md:w-5 md:h-5" /> New Entry</>}
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={exportCSV} 
+            className="bg-slate-100 hover:bg-slate-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 px-3 md:px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 text-sm"
+          >
+            <Download className="w-4 h-4" /> <span className="hidden sm:inline">Export CSV</span>
+          </button>
+          <button 
+            onClick={() => setIsAddingTx(!isAddingTx)} 
+            className={`${isAddingTx ? 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700 text-white dark:hover:bg-blue-500 shadow-lg shadow-blue-500/20'} px-4 py-2.5 md:px-6 md:py-3 rounded-xl font-bold flex items-center gap-2 text-sm md:text-base transition-all`}
+          >
+            {isAddingTx ? 'Cancel' : <><Plus className="w-4 h-4 md:w-5 md:h-5" /> New Entry</>}
+          </button>
+        </div>
       </div>
       
       {isAddingTx && (
@@ -254,9 +296,13 @@ export const Journal = () => {
             <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Date</label>
             <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className={inputClasses} required />
           </div>
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-2">
             <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Description <span className="text-[10px] font-normal italic">(Use #hashtags for trips)</span></label>
             <input type="text" value={txDesc} onChange={e => handleDescInput(e.target.value)} placeholder="e.g. Swiggy #Weekend" className={inputClasses} required />
+          </div>
+          <div>
+            <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Tags <span className="text-[10px] font-normal italic">(comma separated)</span></label>
+            <input type="text" value={txTags} onChange={e => setTxTags(e.target.value)} placeholder="e.g. food, trip" className={inputClasses} />
           </div>
           <div>
             <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Amount</label>
@@ -404,10 +450,19 @@ export const Journal = () => {
                 <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-gray-800/80 border-b border-slate-100 dark:border-gray-800 transition-colors">
                   <td className="p-5 text-sm text-slate-500 dark:text-gray-400 whitespace-nowrap">{t.date}</td>
                   <td className="p-5 font-medium text-slate-800 dark:text-gray-200">
-                    <div className="flex items-center gap-2">
-                      {t.description}
-                      {t.receipt && <button onClick={() => setViewingReceipt(t.receipt)} title="View Receipt" className="text-blue-500 hover:text-blue-600 bg-blue-50 dark:bg-blue-900/30 p-1.5 rounded-lg"><Paperclip className="w-4 h-4" /></button>}
-                      {isFuture && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">Pending</span>}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        {t.description}
+                        {t.receipt && <button onClick={() => setViewingReceipt(t.receipt)} title="View Receipt" className="text-blue-500 hover:text-blue-600 bg-blue-50 dark:bg-blue-900/30 p-1.5 rounded-lg"><Paperclip className="w-4 h-4" /></button>}
+                        {isFuture && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">Pending</span>}
+                      </div>
+                      {t.tags && t.tags.length > 0 && (
+                        <div className="flex gap-1 flex-wrap">
+                          {t.tags.map((tag, i) => (
+                            <span key={i} className="text-[9px] bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 px-1.5 py-0.5 rounded uppercase tracking-wider">#{tag}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="p-5 text-sm text-blue-600 dark:text-blue-400 font-medium">{drAcc}</td>
@@ -446,6 +501,13 @@ export const Journal = () => {
                       {t.receipt && <button onClick={() => setViewingReceipt(t.receipt)} className="text-blue-500 bg-blue-50 dark:bg-blue-900/30 p-1 rounded-md"><Paperclip className="w-3.5 h-3.5" /></button>}
                       {isFuture && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">Pending</span>}
                     </p>
+                    {t.tags && t.tags.length > 0 && (
+                      <div className="flex gap-1 flex-wrap mt-1.5">
+                        {t.tags.map((tag, i) => (
+                          <span key={i} className="text-[9px] bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 px-1.5 py-0.5 rounded uppercase tracking-wider">#{tag}</span>
+                        ))}
+                      </div>
+                    )}
                     <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-1 font-medium">{t.date}</p>
                   </div>
                   <span className="font-bold text-slate-900 dark:text-gray-100 text-lg shrink-0">{formatCurrency(t.amount)}</span>

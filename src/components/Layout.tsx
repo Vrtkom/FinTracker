@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Landmark, LayoutDashboard, Wallet, BookOpen, PieChart, 
-  Download, Upload, Trash2, Repeat, LogOut, Eye, EyeOff, AlertTriangle, Sun, Moon
+  Download, Upload, Trash2, Repeat, LogOut, Eye, EyeOff, AlertTriangle, Sun, Moon,
+  Activity
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { getTotals } from '../utils/finance';
@@ -10,7 +11,8 @@ const tabs = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', short: 'Home' },
   { id: 'accounts', icon: Wallet, label: 'Accounts & Goals', short: 'Accounts' },
   { id: 'transactions', icon: BookOpen, label: 'Journal Entries', short: 'Journal' },
-  { id: 'reports', icon: PieChart, label: 'Statements & Insights', short: 'Reports' },
+  { id: 'insights', icon: Activity, label: 'Insights', short: 'Insights' },
+  { id: 'reports', icon: PieChart, label: 'Statements & Reports', short: 'Reports' },
 ];
 
 export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTheme }: { children: React.ReactNode, activeTab: string, setActiveTab: (t: string) => void, isDarkMode: boolean, toggleTheme: () => void }) => {
