@@ -30,6 +30,7 @@ export interface Transaction {
   cleared: boolean;
   receipt: string | null;
   tags?: string[];
+  groupId?: string;
 }
 
 export interface Recurring {

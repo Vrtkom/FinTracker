@@ -19,6 +19,11 @@ export const Journal = () => {
   const [txReceiptBase64, setTxReceiptBase64] = useState<string | null>(null);
   const [txTags, setTxTags] = useState('');
   
+  const [isSplitMode, setIsSplitMode] = useState(false);
+  const [splitMainAccount, setSplitMainAccount] = useState('');
+  const [splitType, setSplitType] = useState<'out' | 'in'>('out');
+  const [splits, setSplits] = useState([{ accountId: '', amount: '', description: '' }, { accountId: '', amount: '', description: '' }]);
+
   const [showDebitOptions, setShowDebitOptions] = useState(false);
   const [showCreditOptions, setShowCreditOptions] = useState(false);
 
@@ -113,30 +118,70 @@ export const Journal = () => {
 
   const addTransaction = (e: React.FormEvent) => {
     e.preventDefault();
-    const amount = parseFloat(txAmount);
     
-    if (!txDebit || !txCredit) return alert("Please select valid accounts from the dropdown.");
-    if (txDebit === txCredit) return alert("Debit and Credit accounts cannot be the same.");
+    if (isSplitMode) {
+      if (!splitMainAccount) return alert("Please select a main account.");
+      const validSplits = splits.filter(s => s.accountId && s.amount && parseFloat(s.amount) > 0);
+      if (validSplits.length < 2) return alert("Please enter at least two valid splits with amounts.");
+      
+      const groupId = Date.now().toString();
+      const newTxs = validSplits.map((split, index) => {
+        const amount = parseFloat(split.amount);
+        return {
+          id: `${groupId}_${index}`,
+          groupId,
+          date: txDate,
+          description: split.description ? `${txDesc} - ${split.description}` : txDesc,
+          amount,
+          debitAccount: splitType === 'out' ? split.accountId : splitMainAccount,
+          creditAccount: splitType === 'out' ? splitMainAccount : split.accountId,
+          cleared: txCleared,
+          receipt: txReceiptBase64,
+          tags: txTags.split(',').map(t => t.trim()).filter(Boolean)
+        };
+      });
+      
+      if (txRecurring) {
+        const txDay = parseInt(txDate.split('-')[2], 10);
+        const newRecurrings = newTxs.map((tx, idx) => ({
+          id: `${groupId}_rec_${idx}`,
+          description: tx.description,
+          amount: tx.amount,
+          debitAccount: tx.debitAccount,
+          creditAccount: tx.creditAccount,
+          day: txDay
+        }));
+        setRecurring([...recurring, ...newRecurrings]);
+      }
 
-    const newTx = { 
-      id: Date.now().toString(), 
-      date: txDate, 
-      description: txDesc, 
-      amount, 
-      debitAccount: txDebit, 
-      creditAccount: txCredit,
-      cleared: txCleared,
-      receipt: txReceiptBase64,
-      tags: txTags.split(',').map(t => t.trim()).filter(Boolean)
-    };
-    
-    if (txRecurring) {
-      const txDay = parseInt(txDate.split('-')[2], 10);
-      const isDup = recurring.some(r => r.description === txDesc && r.amount === amount && r.debitAccount === txDebit && r.creditAccount === txCredit);
-      if (!isDup) setRecurring([...recurring, { id: Date.now().toString() + '_rec', description: txDesc, amount, debitAccount: txDebit, creditAccount: txCredit, day: txDay }]);
+      setTransactions([...transactions, ...newTxs]);
+    } else {
+      const amount = parseFloat(txAmount);
+      
+      if (!txDebit || !txCredit) return alert("Please select valid accounts from the dropdown.");
+      if (txDebit === txCredit) return alert("Debit and Credit accounts cannot be the same.");
+
+      const newTx = { 
+        id: Date.now().toString(), 
+        date: txDate, 
+        description: txDesc, 
+        amount, 
+        debitAccount: txDebit, 
+        creditAccount: txCredit,
+        cleared: txCleared,
+        receipt: txReceiptBase64,
+        tags: txTags.split(',').map(t => t.trim()).filter(Boolean)
+      };
+      
+      if (txRecurring) {
+        const txDay = parseInt(txDate.split('-')[2], 10);
+        const isDup = recurring.some(r => r.description === txDesc && r.amount === amount && r.debitAccount === txDebit && r.creditAccount === txCredit);
+        if (!isDup) setRecurring([...recurring, { id: Date.now().toString() + '_rec', description: txDesc, amount, debitAccount: txDebit, creditAccount: txCredit, day: txDay }]);
+      }
+
+      setTransactions([...transactions, newTx]);
     }
 
-    setTransactions([...transactions, newTx]);
     setIsAddingTx(false);
     
     // Reset form
@@ -150,6 +195,9 @@ export const Journal = () => {
     setTxCleared(true);
     setTxReceiptBase64(null);
     setTxTags('');
+    setIsSplitMode(false);
+    setSplitMainAccount('');
+    setSplits([{ accountId: '', amount: '', description: '' }, { accountId: '', amount: '', description: '' }]);
   };
 
   const duplicateTransaction = (id: string) => {
@@ -291,99 +339,155 @@ export const Journal = () => {
       </div>
       
       {isAddingTx && (
-        <form onSubmit={addTransaction} className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6">
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Date</label>
-            <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className={inputClasses} required />
-          </div>
-          <div className="lg:col-span-2">
-            <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Description <span className="text-[10px] font-normal italic">(Use #hashtags for trips)</span></label>
-            <input type="text" value={txDesc} onChange={e => handleDescInput(e.target.value)} placeholder="e.g. Swiggy #Weekend" className={inputClasses} required />
-          </div>
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Tags <span className="text-[10px] font-normal italic">(comma separated)</span></label>
-            <input type="text" value={txTags} onChange={e => setTxTags(e.target.value)} placeholder="e.g. food, trip" className={inputClasses} />
-          </div>
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Amount</label>
-            <input type="number" step="0.01" min="0" value={txAmount} onChange={e => setTxAmount(e.target.value)} placeholder="0.00" className={inputClasses} required />
-          </div>
-          
-          <div className="lg:col-span-2 relative custom-select-container mt-2 md:mt-0" ref={debitRef}>
-            <label className="block text-xs md:text-sm font-bold text-blue-600 dark:text-blue-400 mb-1.5">Debit (Dr)</label>
-            <div className="relative">
-              <input 
-                type="text" 
-                value={txDebitSearch}
-                onChange={e => setTxDebitSearch(e.target.value)}
-                onFocus={() => setShowDebitOptions(true)}
-                className={`${inputClasses} pr-10 cursor-text`} 
-                placeholder="Search account..." 
-                autoComplete="off" 
-                required 
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <Search className="w-4 h-4 text-slate-400 dark:text-gray-500" />
-              </div>
+        <form onSubmit={addTransaction} className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm mb-6">
+          <div className="flex justify-center mb-6">
+            <div className="bg-slate-100 dark:bg-gray-800 p-1 rounded-lg inline-flex">
+              <button type="button" onClick={() => setIsSplitMode(false)} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${!isSplitMode ? 'bg-white dark:bg-gray-700 shadow-sm text-slate-800 dark:text-gray-200' : 'text-slate-500 dark:text-gray-400'}`}>Single Entry</button>
+              <button type="button" onClick={() => setIsSplitMode(true)} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${isSplitMode ? 'bg-white dark:bg-gray-700 shadow-sm text-slate-800 dark:text-gray-200' : 'text-slate-500 dark:text-gray-400'}`}>Split Entry</button>
             </div>
-            {showDebitOptions && (
-              <div className="absolute z-50 w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 mt-1 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
-                {getSelectOptionsHTML('debit', txDebitSearch)}
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center justify-center -my-2 md:my-0 lg:pb-1 relative z-10 pt-4 md:pt-6">
-            <button type="button" onClick={swapAccounts} className="bg-white dark:bg-gray-800 hover:bg-slate-100 dark:hover:bg-gray-700 text-slate-600 dark:text-gray-300 p-2 md:p-3 rounded-full border border-slate-200 dark:border-gray-700 shadow-sm transition-colors">
-              <ArrowUpDown className="w-5 h-5 md:hidden" />
-              <ArrowLeftRight className="w-5 h-5 hidden md:block" />
-            </button>
           </div>
 
-          <div className="lg:col-span-2 relative custom-select-container" ref={creditRef}>
-            <label className="block text-xs md:text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1.5">Credit (Cr)</label>
-            <div className="relative">
-              <input 
-                type="text" 
-                value={txCreditSearch}
-                onChange={e => setTxCreditSearch(e.target.value)}
-                onFocus={() => setShowCreditOptions(true)}
-                className={`${inputClasses} pr-10 focus:border-emerald-500 focus:ring-emerald-500 cursor-text`} 
-                placeholder="Search account..." 
-                autoComplete="off" 
-                required 
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <Search className="w-4 h-4 text-slate-400 dark:text-gray-500" />
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
+            <div className="lg:col-span-1">
+              <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Date</label>
+              <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className={inputClasses} required />
             </div>
-            {showCreditOptions && (
-              <div className="absolute z-50 w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 mt-1 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
-                {getSelectOptionsHTML('credit', txCreditSearch)}
+            <div className="lg:col-span-2">
+              <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Description <span className="text-[10px] font-normal italic">(Use #hashtags for trips)</span></label>
+              <input type="text" value={txDesc} onChange={e => handleDescInput(e.target.value)} placeholder="e.g. Swiggy #Weekend" className={inputClasses} required />
+            </div>
+            <div className="lg:col-span-2">
+              <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Tags <span className="text-[10px] font-normal italic">(comma separated)</span></label>
+              <input type="text" value={txTags} onChange={e => setTxTags(e.target.value)} placeholder="e.g. food, trip" className={inputClasses} />
+            </div>
+
+            {isSplitMode ? (
+              <div className="lg:col-span-5 bg-slate-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-slate-200 dark:border-gray-700">
+                <div className="flex flex-col md:flex-row gap-4 mb-4">
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Main Account</label>
+                    <select value={splitMainAccount} onChange={e => setSplitMainAccount(e.target.value)} className={inputClasses} required>
+                      <option value="">Select Account...</option>
+                      {accounts.filter(a => !a.isArchived).map(a => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
+                    </select>
+                  </div>
+                  <div className="w-full md:w-40">
+                    <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Direction</label>
+                    <select value={splitType} onChange={e => setSplitType(e.target.value as 'out'|'in')} className={inputClasses}>
+                      <option value="out">Money Out</option>
+                      <option value="in">Money In</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-2">Splits</label>
+                <div className="space-y-3">
+                  {splits.map((split, i) => (
+                    <div key={i} className="flex flex-col md:flex-row gap-2 items-start md:items-center">
+                      <select value={split.accountId} onChange={e => { const newSplits = [...splits]; newSplits[i].accountId = e.target.value; setSplits(newSplits); }} className={`${inputClasses} flex-1`}>
+                        <option value="">Category/Account...</option>
+                        {accounts.filter(a => !a.isArchived).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      </select>
+                      <input type="text" placeholder="Memo (optional)" value={split.description} onChange={e => { const newSplits = [...splits]; newSplits[i].description = e.target.value; setSplits(newSplits); }} className={`${inputClasses} flex-1`} />
+                      <div className="flex gap-2 w-full md:w-auto">
+                        <input type="number" step="0.01" min="0" placeholder="0.00" value={split.amount} onChange={e => { const newSplits = [...splits]; newSplits[i].amount = e.target.value; setSplits(newSplits); }} className={`${inputClasses} w-full md:w-32`} />
+                        <button type="button" onClick={() => { const newSplits = splits.filter((_, idx) => idx !== i); setSplits(newSplits); }} className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-colors"><Trash2 className="w-5 h-5"/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200 dark:border-gray-700">
+                  <button type="button" onClick={() => setSplits([...splits, { accountId: '', amount: '', description: '' }])} className="text-sm text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1 hover:text-blue-700 transition-colors"><Plus className="w-4 h-4"/> Add Split</button>
+                  <div className="text-sm font-bold text-slate-700 dark:text-gray-300">
+                    Total: {formatCurrency(splits.reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0))}
+                  </div>
+                </div>
               </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Amount</label>
+                  <input type="number" step="0.01" min="0" value={txAmount} onChange={e => setTxAmount(e.target.value)} placeholder="0.00" className={inputClasses} required={!isSplitMode} />
+                </div>
+                
+                <div className="lg:col-span-2 relative custom-select-container mt-2 md:mt-0" ref={debitRef}>
+                  <label className="block text-xs md:text-sm font-bold text-blue-600 dark:text-blue-400 mb-1.5">Debit (Dr)</label>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={txDebitSearch}
+                      onChange={e => setTxDebitSearch(e.target.value)}
+                      onFocus={() => setShowDebitOptions(true)}
+                      className={`${inputClasses} pr-10 cursor-text`} 
+                      placeholder="Search account..." 
+                      autoComplete="off" 
+                      required={!isSplitMode} 
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <Search className="w-4 h-4 text-slate-400 dark:text-gray-500" />
+                    </div>
+                  </div>
+                  {showDebitOptions && (
+                    <div className="absolute z-50 w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 mt-1 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
+                      {getSelectOptionsHTML('debit', txDebitSearch)}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex items-center justify-center -my-2 md:my-0 lg:pb-1 relative z-10 pt-4 md:pt-6">
+                  <button type="button" onClick={swapAccounts} className="bg-white dark:bg-gray-800 hover:bg-slate-100 dark:hover:bg-gray-700 text-slate-600 dark:text-gray-300 p-2 md:p-3 rounded-full border border-slate-200 dark:border-gray-700 shadow-sm transition-colors">
+                    <ArrowUpDown className="w-5 h-5 md:hidden" />
+                    <ArrowLeftRight className="w-5 h-5 hidden md:block" />
+                  </button>
+                </div>
+
+                <div className="lg:col-span-2 relative custom-select-container" ref={creditRef}>
+                  <label className="block text-xs md:text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1.5">Credit (Cr)</label>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={txCreditSearch}
+                      onChange={e => setTxCreditSearch(e.target.value)}
+                      onFocus={() => setShowCreditOptions(true)}
+                      className={`${inputClasses} pr-10 focus:border-emerald-500 focus:ring-emerald-500 cursor-text`} 
+                      placeholder="Search account..." 
+                      autoComplete="off" 
+                      required={!isSplitMode} 
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <Search className="w-4 h-4 text-slate-400 dark:text-gray-500" />
+                    </div>
+                  </div>
+                  {showCreditOptions && (
+                    <div className="absolute z-50 w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 mt-1 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
+                      {getSelectOptionsHTML('credit', txCreditSearch)}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
-          </div>
-          
-          <div className="lg:col-span-5 flex flex-col md:flex-row justify-between items-center mt-2 md:mt-4 md:border-t border-slate-100 dark:border-gray-800 md:pt-6 gap-4">
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 dark:text-gray-400">
-                <input type="checkbox" checked={txRecurring} onChange={e => setTxRecurring(e.target.checked)} className="w-4 h-4 rounded border-slate-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800 cursor-pointer accent-blue-600" />
-                Recurring Template
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 dark:text-gray-400">
-                <input type="checkbox" checked={txCleared} onChange={e => setTxCleared(e.target.checked)} className="w-4 h-4 rounded border-slate-300 dark:border-gray-700 text-emerald-600 focus:ring-emerald-500 bg-white dark:bg-gray-800 cursor-pointer accent-emerald-600" />
-                Mark Cleared
-              </label>
-            </div>
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <button type="button" onClick={() => document.getElementById('txReceiptFile')?.click()} className="flex-1 md:flex-none text-slate-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 flex justify-center items-center gap-1.5 text-sm bg-slate-100 dark:bg-gray-800 px-4 py-3.5 rounded-xl transition-colors">
-                <Camera className="w-4 h-4" /> <span className={txReceiptBase64 ? 'text-emerald-500 font-bold' : ''}>{txReceiptBase64 ? 'Attached ✓' : 'Receipt'}</span>
-              </button>
-              <input type="file" id="txReceiptFile" accept="image/*" className="hidden" onChange={handleReceiptUpload} />
-              
-              <button type="submit" className="flex-[2] md:flex-none bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white px-8 py-3.5 rounded-xl font-bold transition-colors shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2">
-                <CheckCircle className="w-5 h-5" /> Post Entry
-              </button>
+
+            <div className="lg:col-span-5 flex flex-col md:flex-row justify-between items-center mt-2 md:mt-4 md:border-t border-slate-100 dark:border-gray-800 md:pt-6 gap-4">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 dark:text-gray-400">
+                  <input type="checkbox" checked={txRecurring} onChange={e => setTxRecurring(e.target.checked)} className="w-4 h-4 rounded border-slate-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800 cursor-pointer accent-blue-600" />
+                  Recurring Template
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 dark:text-gray-400">
+                  <input type="checkbox" checked={txCleared} onChange={e => setTxCleared(e.target.checked)} className="w-4 h-4 rounded border-slate-300 dark:border-gray-700 text-emerald-600 focus:ring-emerald-500 bg-white dark:bg-gray-800 cursor-pointer accent-emerald-600" />
+                  Mark Cleared
+                </label>
+              </div>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <button type="button" onClick={() => document.getElementById('txReceiptFile')?.click()} className="flex-1 md:flex-none text-slate-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 flex justify-center items-center gap-1.5 text-sm bg-slate-100 dark:bg-gray-800 px-4 py-3.5 rounded-xl transition-colors">
+                  <Camera className="w-4 h-4" /> <span className={txReceiptBase64 ? 'text-emerald-500 font-bold' : ''}>{txReceiptBase64 ? 'Attached ✓' : 'Receipt'}</span>
+                </button>
+                <input type="file" id="txReceiptFile" accept="image/*" className="hidden" onChange={handleReceiptUpload} />
+                
+                <button type="submit" className="flex-[2] md:flex-none bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white px-8 py-3.5 rounded-xl font-bold transition-colors shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2">
+                  <CheckCircle className="w-5 h-5" /> Post Entry
+                </button>
+              </div>
             </div>
           </div>
         </form>
