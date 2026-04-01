@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Search, ArrowUpDown, ArrowLeftRight, Camera, CheckCircle, ShieldCheck, Paperclip, CheckCircle2, Copy, Trash2, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
 
@@ -227,7 +228,21 @@ export const Journal = () => {
   };
 
   const deleteTransaction = (id: string) => {
-    setTransactions(transactions.filter(t => t.id !== id));
+    const txToDelete = transactions.find(t => t.id === id);
+    if (!txToDelete) return;
+    
+    const newTransactions = transactions.filter(t => t.id !== id);
+    setTransactions(newTransactions);
+    
+    toast.success('Transaction deleted', {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          // Re-add the transaction
+          setTransactions([...newTransactions, txToDelete].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        }
+      }
+    });
   };
 
   const toggleCleared = (id: string) => {

@@ -100,10 +100,13 @@ const AppContent = () => {
   );
 };
 
+import { Toaster } from 'sonner';
+
 export default function App() {
   return (
     <FinanceProvider>
       <AppContent />
+      <Toaster position="bottom-center" theme="system" />
     </FinanceProvider>
   );
 }

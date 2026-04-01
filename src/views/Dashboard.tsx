@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Coffee, Coins, Lock, CreditCard, Wallet, CalendarDays, Activity, LayoutGrid, Trophy, Repeat, Target, Paperclip, X } from 'lucide-react';
+import { Coffee, Coins, Lock, CreditCard, Wallet, CalendarDays, Activity, LayoutGrid, Trophy, Repeat, Target, Paperclip, X, Home, Car, Plane, GraduationCap, Heart, PiggyBank, Laptop, Smartphone, Baby, Gift } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getTotals, getAverages, getGamificationStreaks, getAccountBalance } from '../utils/finance';
 
@@ -451,20 +451,43 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
                   projectionText = 'Savings rate too low to project.';
                 }
 
+                const lowerName = g.name.toLowerCase();
+                let GoalIcon = PiggyBank;
+                if (lowerName.includes('house') || lowerName.includes('home') || lowerName.includes('down payment') || lowerName.includes('mortgage')) GoalIcon = Home;
+                else if (lowerName.includes('car') || lowerName.includes('auto') || lowerName.includes('vehicle')) GoalIcon = Car;
+                else if (lowerName.includes('vacation') || lowerName.includes('trip') || lowerName.includes('travel') || lowerName.includes('flight')) GoalIcon = Plane;
+                else if (lowerName.includes('education') || lowerName.includes('college') || lowerName.includes('school') || lowerName.includes('tuition')) GoalIcon = GraduationCap;
+                else if (lowerName.includes('wedding') || lowerName.includes('health') || lowerName.includes('medical')) GoalIcon = Heart;
+                else if (lowerName.includes('laptop') || lowerName.includes('computer') || lowerName.includes('pc')) GoalIcon = Laptop;
+                else if (lowerName.includes('phone') || lowerName.includes('mobile')) GoalIcon = Smartphone;
+                else if (lowerName.includes('baby') || lowerName.includes('child')) GoalIcon = Baby;
+                else if (lowerName.includes('gift') || lowerName.includes('present')) GoalIcon = Gift;
+
                 return (
                   <div key={g.id} className="bg-slate-50 dark:bg-gray-800/50 p-4 rounded-xl border border-slate-100 dark:border-gray-700/50">
-                    <div className="flex justify-between items-end mb-2">
-                      <div>
-                        <p className="font-bold text-slate-800 dark:text-gray-200 text-sm">{g.name}</p>
-                        <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5">Linked: {acc ? acc.name : 'Unknown'}</p>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-900 rounded-full shadow-sm border border-slate-200 dark:border-gray-700">
+                          <GoalIcon className="w-5 h-5 text-slate-300 dark:text-gray-600 absolute" />
+                          <div 
+                            className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-full"
+                            style={{ clipPath: `inset(${100 - pct}% 0 0 0)` }}
+                          >
+                            <GoalIcon className="w-5 h-5 text-purple-500" />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800 dark:text-gray-200 text-sm">{g.name}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5">Linked: {acc ? acc.name : 'Unknown'}</p>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-blue-600 dark:text-blue-400 text-sm">{formatCurrency(bal)}</p>
+                        <p className="font-bold text-purple-600 dark:text-purple-400 text-sm">{formatCurrency(bal)}</p>
                         <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5">of {formatCurrency(g.targetAmount)}</p>
                       </div>
                     </div>
-                    <div className="w-full bg-slate-200 dark:bg-gray-700 rounded-full h-2 mt-3 overflow-hidden">
-                      <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{width: `${pct}%`}}></div>
+                    <div className="w-full bg-slate-200 dark:bg-gray-700 rounded-full h-1.5 mt-3 overflow-hidden">
+                      <div className="bg-purple-500 h-1.5 rounded-full transition-all duration-500" style={{width: `${pct}%`}}></div>
                     </div>
                     <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-2 italic" dangerouslySetInnerHTML={{__html: projectionText}}></p>
                   </div>

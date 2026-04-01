@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LayoutGrid, X, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../../utils/finance';
 
@@ -40,6 +41,9 @@ export const VirtualPotsModal = () => {
   };
 
   const deletePot = (potId: string) => {
+    const potToDelete = pots.find(p => p.id === potId);
+    if (!potToDelete) return;
+
     const updatedAccounts = accounts.map(a => {
       if (a.id === managingPotsFor) {
         return {
@@ -50,10 +54,23 @@ export const VirtualPotsModal = () => {
       return a;
     });
     setAccounts(updatedAccounts);
+
+    toast.success(`Pot "${potToDelete.name}" deleted`, {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          setAccounts(accounts); // Revert to previous accounts state
+        }
+      }
+    });
   };
 
   const addUnallocatedToPot = (potId: string, amountToAdd: number) => {
     if (amountToAdd === 0) return;
+    
+    const pot = pots.find(p => p.id === potId);
+    if (!pot) return;
+
     const updatedAccounts = accounts.map(a => {
       if (a.id === managingPotsFor) {
         return {
@@ -64,6 +81,15 @@ export const VirtualPotsModal = () => {
       return a;
     });
     setAccounts(updatedAccounts);
+
+    toast.success(`Allocated ${formatCurrency(amountToAdd)} to ${pot.name}`, {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          setAccounts(accounts); // Revert to previous accounts state
+        }
+      }
+    });
   };
 
   const inputClasses = "w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-xl outline-none transition-all text-sm md:text-base dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500";

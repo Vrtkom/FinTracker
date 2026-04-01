@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutGrid, Edit2, RefreshCw, Trash2, Target, Plus, Save } from 'lucide-react';
+import { LayoutGrid, Edit2, RefreshCw, Trash2, Target, Plus, Save, Home, Car, Plane, GraduationCap, Heart, PiggyBank, Laptop, Smartphone, Baby, Gift } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
 import { AccountType, Liquidity } from '../types';
@@ -244,11 +244,37 @@ export const Accounts = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {goals.length > 0 ? goals.map(g => {
             const acc = accounts.find(a => a.id === g.linkedAccountId);
+            const bal = acc ? getAccountBalance(acc.id, accounts, transactions) : 0;
+            const pct = Math.min(100, Math.max(0, (bal / g.targetAmount) * 100));
+
+            const lowerName = g.name.toLowerCase();
+            let GoalIcon = PiggyBank;
+            if (lowerName.includes('house') || lowerName.includes('home') || lowerName.includes('down payment') || lowerName.includes('mortgage')) GoalIcon = Home;
+            else if (lowerName.includes('car') || lowerName.includes('auto') || lowerName.includes('vehicle')) GoalIcon = Car;
+            else if (lowerName.includes('vacation') || lowerName.includes('trip') || lowerName.includes('travel') || lowerName.includes('flight')) GoalIcon = Plane;
+            else if (lowerName.includes('education') || lowerName.includes('college') || lowerName.includes('school') || lowerName.includes('tuition')) GoalIcon = GraduationCap;
+            else if (lowerName.includes('wedding') || lowerName.includes('health') || lowerName.includes('medical')) GoalIcon = Heart;
+            else if (lowerName.includes('laptop') || lowerName.includes('computer') || lowerName.includes('pc')) GoalIcon = Laptop;
+            else if (lowerName.includes('phone') || lowerName.includes('mobile')) GoalIcon = Smartphone;
+            else if (lowerName.includes('baby') || lowerName.includes('child')) GoalIcon = Baby;
+            else if (lowerName.includes('gift') || lowerName.includes('present')) GoalIcon = Gift;
+
             return (
               <div key={g.id} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-gray-800/50 rounded-xl border border-slate-100 dark:border-gray-700/50">
-                <div>
-                  <p className="font-bold text-slate-800 dark:text-gray-200">{g.name}</p>
-                  <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Target: {formatCurrency(g.targetAmount)} | Linked: {acc ? acc.name : 'Unknown'}</p>
+                <div className="flex items-center gap-4">
+                  <div className="relative w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-900 rounded-full shadow-sm border border-slate-200 dark:border-gray-700 shrink-0">
+                    <GoalIcon className="w-6 h-6 text-slate-300 dark:text-gray-600 absolute" />
+                    <div 
+                      className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-full"
+                      style={{ clipPath: `inset(${100 - pct}% 0 0 0)` }}
+                    >
+                      <GoalIcon className="w-6 h-6 text-purple-500" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-800 dark:text-gray-200">{g.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Target: {formatCurrency(g.targetAmount)} | Linked: {acc ? acc.name : 'Unknown'}</p>
+                  </div>
                 </div>
                 <button onClick={() => deleteGoal(g.id)} className="text-red-400 hover:text-red-500 p-2"><Trash2 className="w-4 h-4" /></button>
               </div>

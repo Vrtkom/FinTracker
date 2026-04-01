@@ -70,7 +70,7 @@ export const getAverages = (accounts: Account[], transactions: Transaction[]) =>
     const drAcc = accounts.find(a => a.id === t.debitAccount);
     if (drAcc && drAcc.type === 'expense') {
       monthlyData[monthKey].expenses += t.amount;
-      if (drAcc.expenseType !== 'want') monthlyData[monthKey].needs += t.amount;
+      monthlyData[monthKey].needs += t.amount;
     }
   });
   

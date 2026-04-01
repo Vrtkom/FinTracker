@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { CalendarSearch, GitMerge, FastForward, FlaskConical, Hash, ChevronUp, ChevronDown } from 'lucide-react';
+import { CalendarSearch, GitMerge, FastForward, FlaskConical, Hash, ChevronUp, ChevronDown, TrendingUp, Scale, ArrowUpRight, ArrowDownRight, Wallet, Landmark, PieChart } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getTotals, getAccountBalance } from '../utils/finance';
 import { Line } from 'react-chartjs-2';
@@ -13,18 +13,21 @@ export const Reports = () => {
   
   const totals = useMemo(() => getTotals(accounts, transactions), [accounts, transactions]);
 
-  const genRows = (type: string) => {
+  const genRows = (type: string, colorClass: string) => {
     const acts = accounts.filter(a => a.type === type);
-    if(acts.length === 0) return <div className="text-[11px] md:text-xs text-slate-400 dark:text-gray-500 italic py-2">No accounts</div>;
+    if(acts.length === 0) return <div className="text-[11px] md:text-xs text-slate-400 dark:text-gray-500 italic py-3 px-4 rounded-lg bg-slate-50 dark:bg-gray-800/30 border border-slate-100 dark:border-gray-800/50">No accounts</div>;
     return acts.map(acc => {
       const bal = getAccountBalance(acc.id, accounts, transactions);
       if (acc.isArchived && bal === 0) return null;
       return (
-        <div key={acc.id} className="flex justify-between text-slate-600 dark:text-gray-300 py-2.5 md:py-2 border-b border-slate-100 dark:border-gray-800/50 last:border-0">
-          <span className="text-sm md:text-base">
-            {acc.name} {acc.isArchived && <span className="text-[10px] text-slate-400 dark:text-gray-500">(Archived)</span>}
-          </span>
-          <span className="font-medium text-sm md:text-base">{formatCurrency(bal)}</span>
+        <div key={acc.id} className="group flex justify-between items-center text-slate-700 dark:text-gray-300 py-3 px-4 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-800/50 transition-all border-b border-slate-100 dark:border-gray-800/50 last:border-0">
+          <div className="flex items-center gap-3">
+            <div className={`w-2 h-2 rounded-full ${colorClass} shadow-sm`}></div>
+            <span className="text-sm md:text-base font-medium">
+              {acc.name} {acc.isArchived && <span className="text-[10px] text-slate-400 dark:text-gray-500 ml-2 bg-slate-100 dark:bg-gray-800 px-2 py-0.5 rounded-md uppercase tracking-wider font-bold">(Archived)</span>}
+            </span>
+          </div>
+          <span className="font-mono font-semibold text-sm md:text-base tracking-tight">{formatCurrency(bal)}</span>
         </div>
       );
     });
@@ -347,46 +350,130 @@ export const Reports = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-8">
-        <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col">
-          <h3 className="text-xl md:text-2xl font-bold mb-6 text-slate-900 dark:text-white pb-4 border-b border-slate-200 dark:border-gray-800">Income Statement</h3>
-          <div className="space-y-6 md:space-y-8 flex-1">
-            <div>
-              <h4 className="font-bold text-emerald-600 dark:text-emerald-400 mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-widest bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-transparent inline-block px-2.5 py-1 rounded-lg">Revenues (Cr)</h4>
-              <div className="pl-3 md:pl-4 border-l-2 border-emerald-200 dark:border-emerald-900 space-y-1">{genRows('income')}</div>
-              <div className="flex justify-between font-bold text-slate-900 dark:text-white mt-4 pt-4 border-t border-slate-200 dark:border-gray-800 text-base md:text-lg"><span>Total Income</span><span className="text-emerald-600 dark:text-emerald-400">{formatCurrency(totals.income)}</span></div>
+        <div className="bg-white dark:bg-[#111827] p-0 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-xl overflow-hidden flex flex-col relative">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+          <div className="p-6 md:p-8 border-b border-slate-100 dark:border-gray-800 bg-slate-50/50 dark:bg-gray-900/50">
+            <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3 tracking-tight">
+              <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl text-emerald-600 dark:text-emerald-400">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              Income Statement
+            </h3>
+          </div>
+          
+          <div className="p-6 md:p-8 space-y-8 flex-1">
+            {/* Revenues */}
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-4">
+                <ArrowUpRight className="w-5 h-5 text-emerald-500" />
+                <h4 className="font-bold text-slate-900 dark:text-white uppercase text-xs tracking-widest">Revenues (Cr)</h4>
+              </div>
+              <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200 dark:border-gray-800 shadow-sm">
+                {genRows('income', 'bg-emerald-500')}
+                <div className="flex justify-between items-center p-4 bg-slate-50 dark:bg-gray-800/40 border-t border-slate-200 dark:border-gray-800 rounded-b-2xl">
+                  <span className="font-bold text-slate-600 dark:text-gray-400 text-sm uppercase tracking-wider">Total Income</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-lg">{formatCurrency(totals.income)}</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-red-600 dark:text-red-400 mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-widest bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-transparent inline-block px-2.5 py-1 rounded-lg">Expenses (Dr)</h4>
-              <div className="pl-3 md:pl-4 border-l-2 border-red-200 dark:border-red-900 space-y-1">{genRows('expense')}</div>
-              <div className="flex justify-between font-bold text-slate-900 dark:text-white mt-4 pt-4 border-t border-slate-200 dark:border-gray-800 text-base md:text-lg"><span>Total Expenses</span><span className="text-red-600 dark:text-red-400">{formatCurrency(totals.expenses)}</span></div>
+
+            {/* Expenses */}
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-4">
+                <ArrowDownRight className="w-5 h-5 text-red-500" />
+                <h4 className="font-bold text-slate-900 dark:text-white uppercase text-xs tracking-widest">Expenses (Dr)</h4>
+              </div>
+              <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200 dark:border-gray-800 shadow-sm">
+                {genRows('expense', 'bg-red-500')}
+                <div className="flex justify-between items-center p-4 bg-slate-50 dark:bg-gray-800/40 border-t border-slate-200 dark:border-gray-800 rounded-b-2xl">
+                  <span className="font-bold text-slate-600 dark:text-gray-400 text-sm uppercase tracking-wider">Total Expenses</span>
+                  <span className="font-mono font-bold text-red-600 dark:text-red-400 text-lg">{formatCurrency(totals.expenses)}</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div className={`flex justify-between items-center mt-8 md:mt-10 p-5 md:p-6 rounded-2xl ${totals.netIncome >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30' : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30'}`}>
-            <span className="text-base md:text-xl font-bold">Net Profit</span><span className="text-xl md:text-3xl font-bold">{formatCurrency(totals.netIncome)}</span>
+
+          <div className={`p-6 md:p-8 border-t border-slate-200 dark:border-gray-800 ${totals.netIncome >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/10' : 'bg-red-50 dark:bg-red-900/10'}`}>
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col">
+                <span className={`text-xs font-bold uppercase tracking-widest mb-1 ${totals.netIncome >= 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-red-600 dark:text-red-500'}`}>Bottom Line</span>
+                <span className={`text-lg md:text-xl font-black ${totals.netIncome >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>Net Profit</span>
+              </div>
+              <span className={`font-mono text-3xl md:text-4xl font-black tracking-tighter ${totals.netIncome >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                {formatCurrency(totals.netIncome)}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col">
-          <h3 className="text-xl md:text-2xl font-bold mb-6 text-slate-900 dark:text-white pb-4 border-b border-slate-200 dark:border-gray-800">Balance Sheet</h3>
-          <div className="space-y-6 md:space-y-8 flex-1">
-            <div>
-              <h4 className="font-bold text-blue-600 dark:text-blue-400 mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-widest bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-transparent inline-block px-2.5 py-1 rounded-lg">Assets (Dr)</h4>
-              <div className="pl-3 md:pl-4 border-l-2 border-blue-200 dark:border-blue-900 space-y-1">{genRows('asset')}</div>
-              <div className="flex justify-between font-bold text-slate-900 dark:text-white mt-4 pt-4 border-t border-slate-200 dark:border-gray-800 text-base md:text-lg"><span>Total Assets</span><span className="text-blue-600 dark:text-blue-400">{formatCurrency(totals.assets)}</span></div>
+        <div className="bg-white dark:bg-[#111827] p-0 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-xl overflow-hidden flex flex-col relative">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
+          <div className="p-6 md:p-8 border-b border-slate-100 dark:border-gray-800 bg-slate-50/50 dark:bg-gray-900/50">
+            <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3 tracking-tight">
+              <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-600 dark:text-blue-400">
+                <Scale className="w-6 h-6" />
+              </div>
+              Balance Sheet
+            </h3>
+          </div>
+          
+          <div className="p-6 md:p-8 space-y-8 flex-1">
+            {/* Assets */}
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-4">
+                <Wallet className="w-5 h-5 text-blue-500" />
+                <h4 className="font-bold text-slate-900 dark:text-white uppercase text-xs tracking-widest">Assets (Dr)</h4>
+              </div>
+              <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200 dark:border-gray-800 shadow-sm">
+                {genRows('asset', 'bg-blue-500')}
+                <div className="flex justify-between items-center p-4 bg-slate-50 dark:bg-gray-800/40 border-t border-slate-200 dark:border-gray-800 rounded-b-2xl">
+                  <span className="font-bold text-slate-600 dark:text-gray-400 text-sm uppercase tracking-wider">Total Assets</span>
+                  <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-lg">{formatCurrency(totals.assets)}</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-orange-600 dark:text-orange-400 mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-widest bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-transparent inline-block px-2.5 py-1 rounded-lg">Liabilities (Cr)</h4>
-              <div className="pl-3 md:pl-4 border-l-2 border-orange-200 dark:border-orange-900 space-y-1">{genRows('liability')}</div>
-              <div className="flex justify-between font-bold text-slate-900 dark:text-white mt-4 pt-4 border-t border-slate-200 dark:border-gray-800 text-base md:text-lg"><span>Total Liabilities</span><span className="text-orange-600 dark:text-orange-400">{formatCurrency(totals.liabilities)}</span></div>
+
+            {/* Liabilities */}
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-4">
+                <Landmark className="w-5 h-5 text-orange-500" />
+                <h4 className="font-bold text-slate-900 dark:text-white uppercase text-xs tracking-widest">Liabilities (Cr)</h4>
+              </div>
+              <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200 dark:border-gray-800 shadow-sm">
+                {genRows('liability', 'bg-orange-500')}
+                <div className="flex justify-between items-center p-4 bg-slate-50 dark:bg-gray-800/40 border-t border-slate-200 dark:border-gray-800 rounded-b-2xl">
+                  <span className="font-bold text-slate-600 dark:text-gray-400 text-sm uppercase tracking-wider">Total Liabilities</span>
+                  <span className="font-mono font-bold text-orange-600 dark:text-orange-400 text-lg">{formatCurrency(totals.liabilities)}</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-purple-600 dark:text-purple-400 mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-widest bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-transparent inline-block px-2.5 py-1 rounded-lg">Equity (Cr)</h4>
-              <div className="pl-3 md:pl-4 border-l-2 border-purple-200 dark:border-purple-900 space-y-1">{genRows('equity')}</div>
-              <div className="flex justify-between font-bold text-slate-900 dark:text-white mt-4 pt-4 border-t border-slate-200 dark:border-gray-800 text-base md:text-lg"><span>Total Equity</span><span className="text-purple-600 dark:text-purple-400">{formatCurrency(totals.equity)}</span></div>
+
+            {/* Equity */}
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-4">
+                <PieChart className="w-5 h-5 text-purple-500" />
+                <h4 className="font-bold text-slate-900 dark:text-white uppercase text-xs tracking-widest">Equity (Cr)</h4>
+              </div>
+              <div className="bg-white dark:bg-[#0f172a] rounded-2xl border border-slate-200 dark:border-gray-800 shadow-sm">
+                {genRows('equity', 'bg-purple-500')}
+                <div className="flex justify-between items-center p-4 bg-slate-50 dark:bg-gray-800/40 border-t border-slate-200 dark:border-gray-800 rounded-b-2xl">
+                  <span className="font-bold text-slate-600 dark:text-gray-400 text-sm uppercase tracking-wider">Total Equity</span>
+                  <span className="font-mono font-bold text-purple-600 dark:text-purple-400 text-lg">{formatCurrency(totals.equity)}</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="flex justify-between items-center mt-8 md:mt-10 p-5 md:p-6 rounded-2xl bg-slate-100 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-900 dark:text-white shadow-inner">
-            <span className="text-base md:text-xl font-bold">Calculated Net Worth</span><span className="text-xl md:text-3xl font-bold">{formatCurrency(totals.netWorth)}</span>
+
+          <div className="p-6 md:p-8 border-t border-slate-200 dark:border-gray-800 bg-slate-100 dark:bg-gray-800/50">
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col">
+                <span className="text-xs font-bold uppercase tracking-widest mb-1 text-slate-500 dark:text-gray-400">Total Value</span>
+                <span className="text-lg md:text-xl font-black text-slate-800 dark:text-white">Calculated Net Worth</span>
+              </div>
+              <span className="font-mono text-3xl md:text-4xl font-black tracking-tighter text-slate-900 dark:text-white">
+                {formatCurrency(totals.netWorth)}
+              </span>
+            </div>
           </div>
         </div>
 
