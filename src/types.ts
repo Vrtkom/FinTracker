@@ -1,6 +1,5 @@
 export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
 export type Liquidity = 'liquid' | 'invested';
-export type ExpenseType = 'need' | 'want';
 
 export interface Pot {
   id: string;
@@ -13,7 +12,6 @@ export interface Account {
   name: string;
   type: AccountType;
   liquidity?: Liquidity;
-  expenseType?: ExpenseType;
   budget?: number;
   excludeFromForecast?: boolean;
   isArchived: boolean;

@@ -4,7 +4,7 @@ import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
 
 export const Journal = () => {
-  const { accounts, transactions, setTransactions, recurring, setRecurring, setViewingReceipt } = useFinance();
+  const { accounts, transactions, setTransactions, recurring, setRecurring, setViewingReceipt, journalFilterAccount, setJournalFilterAccount } = useFinance();
   
   const [isAddingTx, setIsAddingTx] = useState(false);
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
@@ -28,7 +28,6 @@ export const Journal = () => {
   const [showCreditOptions, setShowCreditOptions] = useState(false);
 
   const [filterSearch, setFilterSearch] = useState('');
-  const [filterAccount, setFilterAccount] = useState('');
   const [filterDate, setFilterDate] = useState('all');
 
   const debitRef = useRef<HTMLDivElement>(null);
@@ -296,8 +295,8 @@ export const Journal = () => {
       (t.tags && t.tags.some(tag => tag.toLowerCase().includes(term)))
     );
   }
-  if (filterAccount) {
-    filteredTxs = filteredTxs.filter(t => t.debitAccount === filterAccount || t.creditAccount === filterAccount);
+  if (journalFilterAccount) {
+    filteredTxs = filteredTxs.filter(t => t.debitAccount === journalFilterAccount || t.creditAccount === journalFilterAccount);
   }
   if (filterDate !== 'all') {
     const now = new Date();
@@ -498,7 +497,7 @@ export const Journal = () => {
           <input type="text" placeholder="Search entries or #tags..." value={filterSearch} onChange={e => setFilterSearch(e.target.value)} className={`${inputClasses} pl-10 py-2.5`} />
           <Search className="w-4 h-4 absolute left-3 top-[14px] text-slate-400" />
         </div>
-        <select value={filterAccount} onChange={e => setFilterAccount(e.target.value)} className={`${inputClasses} w-full md:w-48 py-2.5`}>
+        <select value={journalFilterAccount} onChange={e => setJournalFilterAccount(e.target.value)} className={`${inputClasses} w-full md:w-48 py-2.5`}>
           <option value="">All Accounts</option>
           {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
@@ -509,8 +508,8 @@ export const Journal = () => {
         </select>
       </div>
 
-      {filterAccount && (() => {
-        const acc = accounts.find(a => a.id === filterAccount);
+      {journalFilterAccount && (() => {
+        const acc = accounts.find(a => a.id === journalFilterAccount);
         if (acc && (acc.type === 'asset' || acc.type === 'liability')) {
           const book = getAccountBalance(acc.id, accounts, transactions, true);
           const cleared = getAccountBalance(acc.id, accounts, transactions, false, true);

@@ -36,6 +36,9 @@ interface FinanceContextType {
   managingPotsFor: string | null;
   setManagingPotsFor: (val: string | null) => void;
   
+  journalFilterAccount: string;
+  setJournalFilterAccount: (val: string) => void;
+  
   customReport: CustomReport;
   setCustomReport: (val: CustomReport) => void;
   
@@ -71,6 +74,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const [viewingReceipt, setViewingReceipt] = useState<string | null>(null);
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [managingPotsFor, setManagingPotsFor] = useState<string | null>(null);
+  const [journalFilterAccount, setJournalFilterAccount] = useState<string>('');
   const [customReport, setCustomReport] = useState<CustomReport>(defaultReport);
 
   useEffect(() => {
@@ -253,6 +257,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       viewingReceipt, setViewingReceipt,
       scenario, setScenario,
       managingPotsFor, setManagingPotsFor,
+      journalFilterAccount, setJournalFilterAccount,
       customReport, setCustomReport,
       clearAllData, migrateLocalData
     }}>

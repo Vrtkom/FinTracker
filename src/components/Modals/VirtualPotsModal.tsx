@@ -52,6 +52,20 @@ export const VirtualPotsModal = () => {
     setAccounts(updatedAccounts);
   };
 
+  const addUnallocatedToPot = (potId: string, amountToAdd: number) => {
+    if (amountToAdd === 0) return;
+    const updatedAccounts = accounts.map(a => {
+      if (a.id === managingPotsFor) {
+        return {
+          ...a,
+          pots: (a.pots || []).map(p => p.id === potId ? { ...p, amount: Math.max(0, p.amount + amountToAdd) } : p)
+        };
+      }
+      return a;
+    });
+    setAccounts(updatedAccounts);
+  };
+
   const inputClasses = "w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-xl outline-none transition-all text-sm md:text-base dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500";
 
   return (
@@ -98,16 +112,35 @@ export const VirtualPotsModal = () => {
               <Plus className="w-5 h-5" />
             </button>
           </form>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
+          <div className="space-y-2 max-h-64 overflow-y-auto">
             {pots.map(p => (
-              <div key={p.id} className="flex justify-between items-center bg-slate-50 dark:bg-gray-800/50 p-3 rounded-xl border border-slate-100 dark:border-gray-700/50">
-                <span className="font-medium text-sm text-slate-700 dark:text-gray-300">{p.name}</span>
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-slate-900 dark:text-white text-sm">{formatCurrency(p.amount)}</span>
-                  <button onClick={() => deletePot(p.id)} className="text-slate-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+              <div key={p.id} className="flex flex-col gap-2 bg-slate-50 dark:bg-gray-800/50 p-3 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-sm text-slate-700 dark:text-gray-300">{p.name}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-slate-900 dark:text-white text-sm">{formatCurrency(p.amount)}</span>
+                    <button onClick={() => deletePot(p.id)} className="text-slate-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
+                {unallocated !== 0 && (
+                  <div className="flex flex-wrap gap-1.5 justify-end mt-2">
+                    {[0.1, 0.25, 0.5, 0.75, 1].map(ratio => {
+                      const amt = unallocated * ratio;
+                      const label = ratio === 1 ? 'All' : `${ratio * 100}%`;
+                      return (
+                        <button 
+                          key={ratio}
+                          onClick={() => addUnallocatedToPot(p.id, amt)}
+                          className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${unallocated > 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'}`}
+                        >
+                          {unallocated > 0 ? '+' : ''}{label} ({formatCurrency(amt)})
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
             {pots.length === 0 && <p className="text-xs text-slate-500 dark:text-gray-400 text-center italic py-2">No pots created yet.</p>}

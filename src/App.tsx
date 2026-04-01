@@ -89,7 +89,7 @@ const AppContent = () => {
       {activeTab === 'dashboard' && <Dashboard switchTab={setActiveTab} />}
       {activeTab === 'accounts' && <Accounts />}
       {activeTab === 'transactions' && <Journal />}
-      {activeTab === 'insights' && <Insights />}
+      {activeTab === 'insights' && <Insights switchTab={setActiveTab} />}
       {activeTab === 'reports' && <Reports />}
       
       <RecurringModal />

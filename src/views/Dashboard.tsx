@@ -24,8 +24,7 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
   const curYear = now.getFullYear();
   
   let curIncome = 0;
-  let curNeeds = 0;
-  let curWants = 0;
+  let curExpenses = 0;
   const expMap: Record<string, number> = {};
   const accSpent: Record<string, number> = {}; 
 
@@ -40,16 +39,10 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
       if (drAcc && drAcc.type === 'expense') {
         expMap[drAcc.name] = (expMap[drAcc.name] || 0) + t.amount;
         accSpent[drAcc.id] = (accSpent[drAcc.id] || 0) + t.amount;
-        if (drAcc.expenseType === 'want') curWants += t.amount;
-        else curNeeds += t.amount; 
+        curExpenses += t.amount;
       }
     }
   });
-
-  const curSavings = curIncome - curNeeds - curWants;
-  const needPct = curIncome > 0 ? ((curNeeds / curIncome) * 100).toFixed(0) : 0;
-  const wantPct = curIncome > 0 ? ((curWants / curIncome) * 100).toFixed(0) : 0;
-  const savePct = curIncome > 0 ? ((curSavings / curIncome) * 100).toFixed(0) : 0;
 
   let recurringIncomeTotal = 0;
   let recurringExpenseTotal = 0;
@@ -81,8 +74,8 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
     allowanceText = `Based on ${formatCurrency(remaining)} remaining across your active micro-budgets.`;
   } else {
     const assumedIncome = curIncome > 0 ? curIncome : recurringIncomeTotal;
-    const allowedWantsAndNeeds = assumedIncome * 0.8; 
-    const remaining = Math.max(0, allowedWantsAndNeeds - (curNeeds + curWants));
+    const allowedExpenses = assumedIncome * 0.8; 
+    const remaining = Math.max(0, allowedExpenses - curExpenses);
     safeToSpend = remaining / daysLeft;
     if (assumedIncome > 0) {
       allowanceText = `Based on 80% of your ${formatCurrency(assumedIncome)} income minus current expenses.`;
@@ -322,46 +315,6 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2 md:mt-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-indigo-500" /> 50/30/20 Rule Analyzer
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-gray-400 mb-5">Current month breakdown vs ideal targets</p>
-            
-            <div className="space-y-5">
-              <div>
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-sm font-medium text-slate-700 dark:text-gray-300">Needs (Target 50%)</span>
-                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{needPct}%</span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-gray-800 rounded-full h-2.5 overflow-hidden">
-                  <div className={`${Number(needPct) > 55 ? 'bg-red-500' : 'bg-blue-500'} h-2.5 rounded-full transition-all`} style={{width: `${Math.min(Number(needPct), 100)}%`}}></div>
-                </div>
-                <p className="text-[10px] text-slate-500 dark:text-gray-500 mt-1">{formatCurrency(curNeeds)} spent</p>
-              </div>
-              <div>
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-sm font-medium text-slate-700 dark:text-gray-300">Wants (Target 30%)</span>
-                  <span className="text-sm font-bold text-orange-500 dark:text-orange-400">{wantPct}%</span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-gray-800 rounded-full h-2.5 overflow-hidden">
-                  <div className={`${Number(wantPct) > 35 ? 'bg-red-500' : 'bg-orange-500'} h-2.5 rounded-full transition-all`} style={{width: `${Math.min(Number(wantPct), 100)}%`}}></div>
-                </div>
-                <p className="text-[10px] text-slate-500 dark:text-gray-500 mt-1">{formatCurrency(curWants)} spent</p>
-              </div>
-              <div>
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-sm font-medium text-slate-700 dark:text-gray-300">Savings (Target 20%)</span>
-                  <span className="text-sm font-bold text-emerald-500 dark:text-emerald-400">{savePct}%</span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-gray-800 rounded-full h-2.5 overflow-hidden">
-                  <div className={`${Number(savePct) < 15 ? 'bg-red-500' : 'bg-emerald-500'} h-2.5 rounded-full transition-all`} style={{width: `${Math.min(Math.max(Number(savePct), 0), 100)}%`}}></div>
-                </div>
-                <p className="text-[10px] text-slate-500 dark:text-gray-500 mt-1">{formatCurrency(curSavings)} saved / {formatCurrency(curIncome)} income</p>
-              </div>
-            </div>
-          </div>
-          
           <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm">
             <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1 flex items-center gap-2">
               <LayoutGrid className="w-5 h-5 text-emerald-500" /> Micro-Budgets

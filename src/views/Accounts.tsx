@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { LayoutGrid, Edit2, RefreshCw, Trash2, Target, Plus, Save } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
-import { AccountType, Liquidity, ExpenseType } from '../types';
+import { AccountType, Liquidity } from '../types';
 
 export const Accounts = () => {
   const { accounts, setAccounts, transactions, goals, setGoals, setManagingPotsFor } = useFinance();
@@ -11,7 +11,6 @@ export const Accounts = () => {
   const [newAccName, setNewAccName] = useState('');
   const [newAccType, setNewAccType] = useState<AccountType>('asset');
   const [newAccLiquidity, setNewAccLiquidity] = useState<Liquidity>('liquid');
-  const [newAccExpenseType, setNewAccExpenseType] = useState<ExpenseType>('need');
   const [newAccBudget, setNewAccBudget] = useState('');
   const [newAccExcludeForecast, setNewAccExcludeForecast] = useState(false);
 
@@ -29,7 +28,6 @@ export const Accounts = () => {
       setNewAccName(editAcc.name);
       setNewAccType(editAcc.type);
       setNewAccLiquidity(editAcc.liquidity || 'liquid');
-      setNewAccExpenseType(editAcc.expenseType || 'need');
       setNewAccBudget(editAcc.budget ? String(editAcc.budget) : '');
       setNewAccExcludeForecast(editAcc.excludeFromForecast || false);
       nameInputRef.current?.focus();
@@ -37,7 +35,6 @@ export const Accounts = () => {
       setNewAccName('');
       setNewAccType('asset');
       setNewAccLiquidity('liquid');
-      setNewAccExpenseType('need');
       setNewAccBudget('');
       setNewAccExcludeForecast(false);
     }
@@ -50,13 +47,12 @@ export const Accounts = () => {
 
     const budget = newAccType === 'expense' ? parseFloat(newAccBudget) || 0 : 0;
     const liquidity = newAccType === 'asset' ? newAccLiquidity : 'liquid';
-    const expenseType = newAccType === 'expense' ? newAccExpenseType : 'need';
     const excludeFromForecast = newAccType === 'asset' ? newAccExcludeForecast : false;
 
     if (editingAccountId) {
       const updated = accounts.map(a => {
         if (a.id === editingAccountId) {
-          return { ...a, name, type: newAccType, liquidity, expenseType, budget, excludeFromForecast };
+          return { ...a, name, type: newAccType, liquidity, budget, excludeFromForecast };
         }
         return a;
       });
@@ -68,7 +64,6 @@ export const Accounts = () => {
         name, 
         type: newAccType, 
         liquidity, 
-        expenseType, 
         budget, 
         excludeFromForecast, 
         isArchived: false, 
@@ -124,7 +119,6 @@ export const Accounts = () => {
                   {acc.name} 
                   {acc.isArchived && <span className="text-[10px] bg-slate-200 dark:bg-gray-700 text-slate-600 dark:text-gray-300 px-1.5 py-0.5 rounded ml-1 uppercase">Archived</span>}
                   {acc.excludeFromForecast && <span className="ml-2 text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-1.5 rounded border border-indigo-100 dark:border-transparent">Stashed</span>}
-                  {acc.type === 'expense' && <span className="ml-2 text-[10px] uppercase font-bold text-slate-400 dark:text-gray-500 bg-white dark:bg-gray-900 px-1.5 rounded">{acc.expenseType}</span>}
                   {acc.type === 'expense' && (acc.budget || 0) > 0 && <span className="ml-2 text-[10px] uppercase font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-1.5 rounded border border-orange-100 dark:border-transparent">Limit: {formatCurrency(acc.budget || 0)}</span>}
                 </span>
                 <div className="flex items-center gap-2 shrink-0">
@@ -192,19 +186,10 @@ export const Accounts = () => {
           </div>
         )}
         {newAccType === 'expense' && (
-          <>
-            <div className="w-full md:w-36">
-              <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Type (50/30/20)</label>
-              <select value={newAccExpenseType} onChange={e => setNewAccExpenseType(e.target.value as ExpenseType)} className={inputClasses}>
-                <option value="need">Need (50%)</option>
-                <option value="want">Want (30%)</option>
-              </select>
-            </div>
-            <div className="w-full md:w-36">
-              <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Monthly Limit</label>
-              <input type="number" value={newAccBudget} onChange={e => setNewAccBudget(e.target.value)} className={inputClasses} placeholder="Optional" />
-            </div>
-          </>
+          <div className="w-full md:w-36">
+            <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Monthly Limit</label>
+            <input type="number" value={newAccBudget} onChange={e => setNewAccBudget(e.target.value)} className={inputClasses} placeholder="Optional" />
+          </div>
         )}
         {newAccType === 'asset' && (
           <div className="w-full mt-2">

@@ -6,8 +6,8 @@ import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Activity } from 'lu
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
-export const Insights = () => {
-  const { accounts, transactions } = useFinance();
+export const Insights = ({ switchTab }: { switchTab: (tab: string) => void }) => {
+  const { accounts, transactions, setJournalFilterAccount } = useFinance();
 
   const { expenseData, incomeVsExpenseData, topExpenses } = useMemo(() => {
     const now = new Date();
@@ -15,7 +15,7 @@ export const Insights = () => {
     const currentYear = now.getFullYear();
 
     // 1. Expense Breakdown (Current Month)
-    const expenseMap: Record<string, number> = {};
+    const expenseMap: Record<string, { value: number, id: string }> = {};
     const monthlyTxs = transactions.filter(t => {
       const d = new Date(t.date);
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
@@ -24,12 +24,15 @@ export const Insights = () => {
     monthlyTxs.forEach(t => {
       const drAcc = accounts.find(a => a.id === t.debitAccount);
       if (drAcc && drAcc.type === 'expense') {
-        expenseMap[drAcc.name] = (expenseMap[drAcc.name] || 0) + t.amount;
+        if (!expenseMap[drAcc.name]) {
+          expenseMap[drAcc.name] = { value: 0, id: drAcc.id };
+        }
+        expenseMap[drAcc.name].value += t.amount;
       }
     });
 
     const expenseData = Object.entries(expenseMap)
-      .map(([name, value]) => ({ name, value }))
+      .map(([name, data]) => ({ name, value: data.value, id: data.id }))
       .sort((a, b) => b.value - a.value);
 
     const topExpenses = expenseData.slice(0, 5);
@@ -116,7 +119,14 @@ export const Insights = () => {
               </div>
               <div className="w-full md:w-1/2 space-y-3">
                 {topExpenses.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between">
+                  <div 
+                    key={idx} 
+                    className="flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
+                    onClick={() => {
+                      setJournalFilterAccount(item.id);
+                      switchTab('transactions');
+                    }}
+                  >
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
                       <span className="text-sm font-medium text-slate-700 dark:text-gray-300">{item.name}</span>
