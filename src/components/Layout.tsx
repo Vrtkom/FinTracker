@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Landmark, LayoutDashboard, Wallet, BookOpen, PieChart, 
-  Download, Upload, Trash2, Repeat, LogOut, Eye, EyeOff, AlertTriangle, Sun, Moon,
-  Activity
+  Download, Upload, Trash2, Repeat, LogOut, Eye, EyeOff, Sun, Moon,
+  Activity, Flame, AlertTriangle
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { getTotals } from '../utils/finance';
@@ -22,6 +22,7 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
     setShowManageRecurringModal, 
     accounts, transactions, 
     setAccounts, setTransactions, setRecurring, setGoals,
+    activityStreak,
     clearAllData 
   } = useFinance();
   
@@ -127,6 +128,12 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
           </div>
         </div>
         <div className="flex gap-2 sm:gap-3 items-center">
+          {activityStreak > 0 && (
+            <div className="flex items-center gap-1 text-orange-500 bg-orange-50 dark:bg-orange-500/10 px-2 py-1 rounded-lg mr-1" title={`${activityStreak} Day Streak!`}>
+              <Flame className="w-4 h-4 fill-orange-500" />
+              <span className="text-xs font-bold">{activityStreak}</span>
+            </div>
+          )}
           <button onClick={toggleTheme} className="text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white p-1" title="Toggle Theme">
             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
@@ -152,7 +159,13 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
                 <Landmark className="w-8 h-8 text-blue-600 dark:text-blue-500" />
                 <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">FINTrack</h1>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 items-center">
+                {activityStreak > 0 && (
+                  <div className="flex items-center gap-1 text-orange-500 bg-orange-50 dark:bg-orange-500/10 px-2 py-1 rounded-lg mr-2" title={`${activityStreak} Day Streak!`}>
+                    <Flame className="w-4 h-4 fill-orange-500" />
+                    <span className="text-xs font-bold">{activityStreak}</span>
+                  </div>
+                )}
                 <button onClick={toggleTheme} className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors p-1.5" title="Toggle Theme">
                   {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>

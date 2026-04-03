@@ -140,6 +140,13 @@ service cloud.firestore {
              data.linkedAccountId is string && data.linkedAccountId.size() > 0 && data.linkedAccountId.size() < 100;
     }
 
+    function isValidStat() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['lastActiveDate', 'streak']) &&
+             (!('lastActiveDate' in data) || (data.lastActiveDate is string && data.lastActiveDate.size() < 20)) &&
+             (!('streak' in data) || data.streak is number);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -171,6 +178,13 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidGoal() && uidUnchanged();
         allow update: if isOwner(userId) && isDocOwner() && isValidGoal() && uidNotModified();
         allow delete: if isOwner(userId) && isDocOwner();
+      }
+      
+      match /stats/activity {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidStat();
+        allow update: if isOwner(userId) && isValidStat();
+        allow delete: if isOwner(userId);
       }
     }
   }

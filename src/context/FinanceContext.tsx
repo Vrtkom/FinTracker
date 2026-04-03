@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Account, Transaction, Recurring, Goal, Scenario, CustomReport } from '../types';
 import { auth, db, signInWithGoogle, logout } from '../firebase';
-import { collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
@@ -42,6 +42,8 @@ interface FinanceContextType {
   customReport: CustomReport;
   setCustomReport: (val: CustomReport) => void;
   
+  activityStreak: number;
+  
   clearAllData: () => void;
   migrateLocalData: () => Promise<void>;
 }
@@ -51,6 +53,7 @@ const defaultReport: CustomReport = {
   endDate: new Date().toISOString().split('T')[0],
   showDetails: false,
   showSankey: false,
+  comparePreviousPeriod: false,
   type: 'pnl',
   data: null
 };
@@ -76,6 +79,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const [managingPotsFor, setManagingPotsFor] = useState<string | null>(null);
   const [journalFilterAccount, setJournalFilterAccount] = useState<string>('');
   const [customReport, setCustomReport] = useState<CustomReport>(defaultReport);
+  const [activityStreak, setActivityStreak] = useState<number>(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -86,6 +90,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
         setTransactionsState([]);
         setRecurringState([]);
         setGoalsState([]);
+        setActivityStreak(0);
       }
     });
     return () => unsubscribe();
@@ -110,11 +115,85 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       setGoalsState(snapshot.docs.map(doc => doc.data() as Goal));
     }, (error) => handleFirestoreError(error, OperationType.GET, `users/${user.uid}/goals`));
 
+    const unsubActivity = onSnapshot(doc(db, `users/${user.uid}/stats/activity`), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const lastActive = data.lastActiveDate;
+        const currentStreak = data.streak || 0;
+        const today = new Date().toISOString().split('T')[0];
+        
+        if (lastActive !== today) {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split('T')[0];
+          
+          let newStreak = currentStreak;
+          if (lastActive === yesterdayStr) {
+            newStreak += 1;
+          } else {
+            newStreak = 1;
+          }
+          
+          setDoc(doc(db, `users/${user.uid}/stats/activity`), {
+            lastActiveDate: today,
+            streak: newStreak
+          }, { merge: true });
+          
+          setActivityStreak(newStreak);
+        } else {
+          setActivityStreak(currentStreak);
+        }
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        setDoc(doc(db, `users/${user.uid}/stats/activity`), {
+          lastActiveDate: today,
+          streak: 1
+        });
+        setActivityStreak(1);
+      }
+    }, (error) => handleFirestoreError(error, OperationType.GET, `users/${user.uid}/stats/activity`));
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Trigger a re-read of the document to update streak if day changed
+        getDoc(doc(db, `users/${user.uid}/stats/activity`)).then(docSnap => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            const lastActive = data.lastActiveDate;
+            const currentStreak = data.streak || 0;
+            const today = new Date().toISOString().split('T')[0];
+            
+            if (lastActive !== today) {
+              const yesterday = new Date();
+              yesterday.setDate(yesterday.getDate() - 1);
+              const yesterdayStr = yesterday.toISOString().split('T')[0];
+              
+              let newStreak = currentStreak;
+              if (lastActive === yesterdayStr) {
+                newStreak += 1;
+              } else {
+                newStreak = 1;
+              }
+              
+              setDoc(doc(db, `users/${user.uid}/stats/activity`), {
+                lastActiveDate: today,
+                streak: newStreak
+              }, { merge: true });
+            }
+          }
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       unsubAccounts();
       unsubTransactions();
       unsubRecurring();
       unsubGoals();
+      unsubActivity();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [user, isAuthReady]);
 
@@ -259,6 +338,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       managingPotsFor, setManagingPotsFor,
       journalFilterAccount, setJournalFilterAccount,
       customReport, setCustomReport,
+      activityStreak,
       clearAllData, migrateLocalData
     }}>
       {children}

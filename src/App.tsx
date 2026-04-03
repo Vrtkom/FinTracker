@@ -43,11 +43,8 @@ const AppContent = () => {
   const handleDismissMigration = () => {
     if (window.confirm("Are you sure? Your local data will remain on this device but won't be synced to the cloud. You can clear it later in Data Management.")) {
       setShowMigrationPrompt(false);
-      // Remove local data to prevent prompting again, or just set a flag
-      localStorage.removeItem('fintrack_accounts');
-      localStorage.removeItem('fintrack_transactions');
-      localStorage.removeItem('fintrack_recurring');
-      localStorage.removeItem('fintrack_goals');
+      // Set a flag to prevent prompting again instead of deleting data
+      localStorage.setItem('fintrack_migration_dismissed', 'true');
     }
   };
 

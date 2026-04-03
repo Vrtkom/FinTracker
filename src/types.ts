@@ -58,6 +58,7 @@ export interface CustomReport {
   endDate: string;
   showDetails: boolean;
   showSankey: boolean;
+  comparePreviousPeriod?: boolean;
   type: 'pnl' | 'cashflow' | 'ledger';
   data: any;
 }

@@ -5,6 +5,7 @@ import { formatCurrency, getTotals, getAccountBalance } from '../utils/finance';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { Chart } from 'react-google-charts';
+import { SpendingHeatmap } from '../components/SpendingHeatmap';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -44,13 +45,30 @@ export const Reports = () => {
     const eDate = customReport.endDate;
     const detailed = customReport.showDetails;
     const repType = customReport.type;
+    const compare = customReport.comparePreviousPeriod;
 
     if (!s || !eDate) return;
 
+    const sDateObj = new Date(s);
+    const eDateObj = new Date(eDate);
+    const diffTime = Math.abs(eDateObj.getTime() - sDateObj.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const prevEDateObj = new Date(sDateObj);
+    prevEDateObj.setDate(prevEDateObj.getDate() - 1);
+    const prevSDateObj = new Date(prevEDateObj);
+    prevSDateObj.setDate(prevSDateObj.getDate() - diffDays);
+
+    const prevS = prevSDateObj.toISOString().split('T')[0];
+    const prevE = prevEDateObj.toISOString().split('T')[0];
+
     const filtered = transactions.filter(t => t.date >= s && t.date <= eDate);
+    const prevFiltered = transactions.filter(t => t.date >= prevS && t.date <= prevE);
 
     let inTotal = 0, outTotal = 0;
+    let prevInTotal = 0, prevOutTotal = 0;
     const flows: any = { in: {}, out: {}, all: [] };
+    const prevFlows: any = { in: {}, out: {} };
 
     if (repType === 'pnl') {
       filtered.forEach(t => {
@@ -70,6 +88,22 @@ export const Reports = () => {
           flows.out[drAcc.id].txs.push(t);
         }
       });
+      if (compare) {
+        prevFiltered.forEach(t => {
+          const crAcc = accounts.find(a => a.id === t.creditAccount);
+          const drAcc = accounts.find(a => a.id === t.debitAccount);
+          if (crAcc && crAcc.type === 'income') {
+            prevInTotal += t.amount;
+            if (!prevFlows.in[crAcc.id]) prevFlows.in[crAcc.id] = { amount: 0 };
+            prevFlows.in[crAcc.id].amount += t.amount;
+          }
+          if (drAcc && drAcc.type === 'expense') {
+            prevOutTotal += t.amount;
+            if (!prevFlows.out[drAcc.id]) prevFlows.out[drAcc.id] = { amount: 0 };
+            prevFlows.out[drAcc.id].amount += t.amount;
+          }
+        });
+      }
     } else if (repType === 'cashflow') {
       filtered.forEach(t => {
         const crAcc = accounts.find(a => a.id === t.creditAccount);
@@ -93,6 +127,16 @@ export const Reports = () => {
           flows.out[t.debitAccount].txs.push(t);
         }
       });
+      if (compare) {
+        prevFiltered.forEach(t => {
+          const crAcc = accounts.find(a => a.id === t.creditAccount);
+          const drAcc = accounts.find(a => a.id === t.debitAccount);
+          const isDebitLiquid = drAcc && drAcc.type === 'asset' && drAcc.liquidity === 'liquid';
+          const isCreditLiquid = crAcc && crAcc.type === 'asset' && crAcc.liquidity === 'liquid';
+          if (isDebitLiquid && !isCreditLiquid) prevInTotal += t.amount;
+          if (isCreditLiquid && !isDebitLiquid) prevOutTotal += t.amount;
+        });
+      }
     } else if (repType === 'ledger') {
       inTotal = filtered.reduce((sum, t) => sum + t.amount, 0); 
       flows.all = filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); 
@@ -100,7 +144,7 @@ export const Reports = () => {
 
     setCustomReport({
       ...customReport,
-      data: { inTotal, outTotal, flows },
+      data: { inTotal, outTotal, flows, prevInTotal, prevOutTotal, prevFlows, compare },
       showSankey: repType === 'pnl' || repType === 'cashflow'
     });
   };
@@ -270,9 +314,15 @@ export const Reports = () => {
             </div>
           </div>
           <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-            <div className="flex items-center gap-2 px-2">
-              <input type="checkbox" id="repDetailed" checked={customReport.showDetails} onChange={e => setCustomReport({...customReport, showDetails: e.target.checked})} className="w-4 h-4 rounded border-slate-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800 cursor-pointer accent-blue-600" />
-              <label htmlFor="repDetailed" className="text-sm font-medium text-slate-600 dark:text-gray-400 cursor-pointer">Detailed View</label>
+            <div className="flex flex-wrap items-center gap-4 px-2">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="repDetailed" checked={customReport.showDetails} onChange={e => setCustomReport({...customReport, showDetails: e.target.checked})} className="w-4 h-4 rounded border-slate-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800 cursor-pointer accent-blue-600" />
+                <label htmlFor="repDetailed" className="text-sm font-medium text-slate-600 dark:text-gray-400 cursor-pointer">Detailed View</label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="repCompare" checked={customReport.comparePreviousPeriod} onChange={e => setCustomReport({...customReport, comparePreviousPeriod: e.target.checked})} className="w-4 h-4 rounded border-slate-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800 cursor-pointer accent-blue-600" />
+                <label htmlFor="repCompare" className="text-sm font-medium text-slate-600 dark:text-gray-400 cursor-pointer">Compare to Previous Period</label>
+              </div>
             </div>
             <div className="flex gap-2 w-full md:w-auto">
               <button type="submit" className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold transition-colors text-sm shadow-md shadow-blue-500/20">Generate</button>
@@ -287,22 +337,85 @@ export const Reports = () => {
               <>
                 <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Report Summary</h4>
                 <div className="grid grid-cols-3 gap-3 md:gap-4 mb-6">
-                  <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 md:p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 md:p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-center relative">
                     <p className="text-[10px] md:text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1 font-bold">{customReport.type === 'pnl' ? 'Income' : 'Inflow'}</p>
                     <p className="text-base md:text-xl font-black text-emerald-700 dark:text-emerald-300">{formatCurrency(customReport.data.inTotal)}</p>
+                    {customReport.data.compare && customReport.data.prevInTotal > 0 && (
+                      <div className={`mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${customReport.data.inTotal >= customReport.data.prevInTotal ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800/50 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-800/50 dark:text-red-300'}`}>
+                        {customReport.data.inTotal >= customReport.data.prevInTotal ? '↑' : '↓'} {Math.abs(((customReport.data.inTotal - customReport.data.prevInTotal) / customReport.data.prevInTotal) * 100).toFixed(1)}% vs prev
+                      </div>
+                    )}
                   </div>
-                  <div className="bg-red-50 dark:bg-red-900/20 p-3 md:p-4 rounded-xl border border-red-100 dark:border-red-900/30 text-center">
+                  <div className="bg-red-50 dark:bg-red-900/20 p-3 md:p-4 rounded-xl border border-red-100 dark:border-red-900/30 text-center relative">
                     <p className="text-[10px] md:text-xs text-red-600 dark:text-red-400 uppercase tracking-wider mb-1 font-bold">{customReport.type === 'pnl' ? 'Expense' : 'Outflow'}</p>
                     <p className="text-base md:text-xl font-black text-red-700 dark:text-red-300">{formatCurrency(customReport.data.outTotal)}</p>
+                    {customReport.data.compare && customReport.data.prevOutTotal > 0 && (
+                      <div className={`mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${customReport.data.outTotal <= customReport.data.prevOutTotal ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800/50 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-800/50 dark:text-red-300'}`}>
+                        {customReport.data.outTotal <= customReport.data.prevOutTotal ? '↓' : '↑'} {Math.abs(((customReport.data.outTotal - customReport.data.prevOutTotal) / customReport.data.prevOutTotal) * 100).toFixed(1)}% vs prev
+                      </div>
+                    )}
                   </div>
-                  <div className="bg-slate-100 dark:bg-gray-800 p-3 md:p-4 rounded-xl border border-slate-200 dark:border-gray-700 text-center">
+                  <div className="bg-slate-100 dark:bg-gray-800 p-3 md:p-4 rounded-xl border border-slate-200 dark:border-gray-700 text-center relative">
                     <p className="text-[10px] md:text-xs text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-1 font-bold">Net Flow</p>
                     <p className={`text-base md:text-xl font-black ${customReport.data.inTotal - customReport.data.outTotal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                       {customReport.data.inTotal - customReport.data.outTotal > 0 ? '+' : ''}{formatCurrency(customReport.data.inTotal - customReport.data.outTotal)}
                     </p>
+                    {customReport.data.compare && (customReport.data.prevInTotal - customReport.data.prevOutTotal) !== 0 && (
+                      <div className={`mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${(customReport.data.inTotal - customReport.data.outTotal) >= (customReport.data.prevInTotal - customReport.data.prevOutTotal) ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800/50 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-800/50 dark:text-red-300'}`}>
+                        {(customReport.data.inTotal - customReport.data.outTotal) >= (customReport.data.prevInTotal - customReport.data.prevOutTotal) ? '↑' : '↓'} {Math.abs((((customReport.data.inTotal - customReport.data.outTotal) - (customReport.data.prevInTotal - customReport.data.prevOutTotal)) / Math.abs(customReport.data.prevInTotal - customReport.data.prevOutTotal)) * 100).toFixed(1)}% vs prev
+                      </div>
+                    )}
                   </div>
                 </div>
                 
+                {customReport.data.compare && (
+                  <div className="mt-6 mb-6">
+                    <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-blue-500" /> Key Insights
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.keys(customReport.data.flows.out).map(accId => {
+                        const currentAmt = customReport.data.flows.out[accId].amount;
+                        const prevAmt = customReport.data.prevFlows.out[accId]?.amount || 0;
+                        if (prevAmt > 0 && currentAmt !== prevAmt) {
+                          const diff = currentAmt - prevAmt;
+                          const percent = Math.abs((diff / prevAmt) * 100).toFixed(0);
+                          if (diff < 0 && parseInt(percent) >= 5) {
+                            return (
+                              <div key={accId} className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5">
+                                <span>🎉</span> You spent {percent}% less on {customReport.data.flows.out[accId].name} this period!
+                              </div>
+                            );
+                          } else if (diff > 0 && parseInt(percent) >= 5) {
+                            return (
+                              <div key={accId} className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5">
+                                <span>⚠️</span> {customReport.data.flows.out[accId].name} expenses are up {percent}%.
+                              </div>
+                            );
+                          }
+                        }
+                        return null;
+                      })}
+                      {Object.keys(customReport.data.flows.in).map(accId => {
+                        const currentAmt = customReport.data.flows.in[accId].amount;
+                        const prevAmt = customReport.data.prevFlows.in[accId]?.amount || 0;
+                        if (prevAmt > 0 && currentAmt !== prevAmt) {
+                          const diff = currentAmt - prevAmt;
+                          const percent = Math.abs((diff / prevAmt) * 100).toFixed(0);
+                          if (diff > 0 && parseInt(percent) >= 5) {
+                            return (
+                              <div key={accId} className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5">
+                                <span>🚀</span> {customReport.data.flows.in[accId].name} income increased by {percent}%!
+                              </div>
+                            );
+                          }
+                        }
+                        return null;
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {Object.keys(customReport.data.flows.in).length > 0 && (
                   <div className="mt-8 border-t border-slate-100 dark:border-gray-800 pt-6 animate-fade-in">
                     <button type="button" onClick={() => setCustomReport({...customReport, showSankey: !customReport.showSankey})} className="w-full flex justify-between items-center group focus:outline-none">
@@ -503,6 +616,10 @@ export const Reports = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="col-span-1 lg:col-span-2">
+          <SpendingHeatmap />
         </div>
 
         <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm col-span-1 lg:col-span-2">
