@@ -9,9 +9,9 @@ import { getTotals } from '../utils/finance';
 
 const tabs = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', short: 'Home' },
-  { id: 'accounts', icon: Wallet, label: 'Accounts & Goals', short: 'Accounts' },
+  { id: 'accounts', icon: Wallet, label: 'Accounts', short: 'Accounts' },
   { id: 'transactions', icon: BookOpen, label: 'Journal Entries', short: 'Journal' },
-  { id: 'budgets', icon: Target, label: 'Budgets', short: 'Budgets' },
+  { id: 'budgets', icon: Target, label: 'Budgets & Goals', short: 'Budgets' },
   { id: 'insights', icon: Activity, label: 'Insights', short: 'Insights' },
   { id: 'reports', icon: PieChart, label: 'Statements & Reports', short: 'Reports' },
 ];

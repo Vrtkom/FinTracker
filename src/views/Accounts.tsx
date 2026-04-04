@@ -5,7 +5,7 @@ import { formatCurrency, getAccountBalance } from '../utils/finance';
 import { AccountType, Liquidity } from '../types';
 
 export const Accounts = () => {
-  const { accounts, setAccounts, transactions, goals, setGoals, setManagingPotsFor } = useFinance();
+  const { accounts, setAccounts, transactions, setManagingPotsFor } = useFinance();
   
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [newAccName, setNewAccName] = useState('');
@@ -13,10 +13,6 @@ export const Accounts = () => {
   const [newAccLiquidity, setNewAccLiquidity] = useState<Liquidity>('liquid');
   const [newAccBudget, setNewAccBudget] = useState('');
   const [newAccExcludeForecast, setNewAccExcludeForecast] = useState(false);
-
-  const [newGoalName, setNewGoalName] = useState('');
-  const [newGoalAmount, setNewGoalAmount] = useState('');
-  const [newGoalAccount, setNewGoalAccount] = useState('');
 
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,9 +70,8 @@ export const Accounts = () => {
 
   const deleteAccount = (id: string) => {
     const isUsed = transactions.some(t => t.debitAccount === id || t.creditAccount === id);
-    const isGoalLinked = goals.some(g => g.linkedAccountId === id);
-    if (isUsed || isGoalLinked) {
-      if (window.confirm("Cannot hard-delete: Account has entries or is linked to a goal.\nArchive it instead?")) {
+    if (isUsed) {
+      if (window.confirm("Cannot hard-delete: Account has entries.\nArchive it instead?")) {
         setAccounts(accounts.map(a => a.id === id ? { ...a, isArchived: true } : a));
       }
       return;
@@ -86,22 +81,6 @@ export const Accounts = () => {
 
   const unarchiveAccount = (id: string) => {
     setAccounts(accounts.map(a => a.id === id ? { ...a, isArchived: false } : a));
-  };
-
-  const addGoal = (e: React.FormEvent) => {
-    e.preventDefault();
-    const name = newGoalName.trim();
-    const targetAmount = parseFloat(newGoalAmount);
-    if (!name || isNaN(targetAmount) || !newGoalAccount) return;
-    
-    setGoals([...goals, { id: Date.now().toString(), name, targetAmount, linkedAccountId: newGoalAccount }]);
-    setNewGoalName('');
-    setNewGoalAmount('');
-    setNewGoalAccount('');
-  };
-
-  const deleteGoal = (id: string) => {
-    setGoals(goals.filter(g => g.id !== id));
   };
 
   const inputClasses = "w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-xl outline-none transition-all text-sm md:text-base dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500";
@@ -160,7 +139,7 @@ export const Accounts = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">Accounts & Goals</h2>
+      <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">Accounts</h2>
       <form onSubmit={saveAccount} className={`bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col md:flex-row gap-4 md:items-end flex-wrap transition-colors ${editAcc ? 'ring-2 ring-blue-500 bg-blue-50/30 dark:bg-blue-900/10' : ''}`}>
         <div className="flex-1 w-full">
           <label className={`block text-xs md:text-sm font-bold ${editAcc ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-gray-400'} mb-1.5`}>{formTitle}</label>
@@ -213,74 +192,6 @@ export const Accounts = () => {
         {renderGroup('equity', 'Equity (Cr)', 'text-purple-600 dark:text-purple-400')}
         {renderGroup('income', 'Income (Cr)', 'text-emerald-600 dark:text-emerald-400')}
         {renderGroup('expense', 'Expenses (Dr)', 'text-orange-600 dark:text-orange-400')}
-      </div>
-
-      <div className="mt-8 bg-white dark:bg-gray-900 p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm">
-        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
-          <Target className="w-6 h-6 text-purple-500" /> Financial Goals
-        </h3>
-        <form onSubmit={addGoal} className="flex flex-col md:flex-row gap-4 md:items-end flex-wrap border-b border-slate-100 dark:border-gray-800 pb-6 mb-6">
-          <div className="flex-1 w-full">
-            <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Goal Name</label>
-            <input type="text" value={newGoalName} onChange={e => setNewGoalName(e.target.value)} className={inputClasses} placeholder="e.g. Goa Trip, New Car" required />
-          </div>
-          <div className="w-full md:w-48">
-            <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Target Amount</label>
-            <input type="number" step="0.01" min="0" value={newGoalAmount} onChange={e => setNewGoalAmount(e.target.value)} className={inputClasses} placeholder="0.00" required />
-          </div>
-          <div className="w-full md:w-56">
-            <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Link to Asset Account</label>
-            <select value={newGoalAccount} onChange={e => setNewGoalAccount(e.target.value)} className={inputClasses} required>
-              <option value="" disabled>Select Asset...</option>
-              {accounts.filter(a => !a.isArchived && a.type === 'asset').map(a => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
-            </select>
-          </div>
-          <button type="submit" className="w-full md:w-auto bg-purple-600 hover:bg-purple-700 dark:hover:bg-purple-500 text-white px-6 py-3.5 rounded-xl font-bold flex justify-center items-center gap-2 transition-colors mt-2 md:mt-0 shadow-lg shadow-purple-500/20">
-            <Plus className="w-5 h-5" /> Set Goal
-          </button>
-        </form>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {goals.length > 0 ? goals.map(g => {
-            const acc = accounts.find(a => a.id === g.linkedAccountId);
-            const bal = acc ? getAccountBalance(acc.id, accounts, transactions) : 0;
-            const pct = Math.min(100, Math.max(0, (bal / g.targetAmount) * 100));
-
-            const lowerName = g.name.toLowerCase();
-            let GoalIcon = PiggyBank;
-            if (lowerName.includes('house') || lowerName.includes('home') || lowerName.includes('down payment') || lowerName.includes('mortgage')) GoalIcon = Home;
-            else if (lowerName.includes('car') || lowerName.includes('auto') || lowerName.includes('vehicle')) GoalIcon = Car;
-            else if (lowerName.includes('vacation') || lowerName.includes('trip') || lowerName.includes('travel') || lowerName.includes('flight')) GoalIcon = Plane;
-            else if (lowerName.includes('education') || lowerName.includes('college') || lowerName.includes('school') || lowerName.includes('tuition')) GoalIcon = GraduationCap;
-            else if (lowerName.includes('wedding') || lowerName.includes('health') || lowerName.includes('medical')) GoalIcon = Heart;
-            else if (lowerName.includes('laptop') || lowerName.includes('computer') || lowerName.includes('pc')) GoalIcon = Laptop;
-            else if (lowerName.includes('phone') || lowerName.includes('mobile')) GoalIcon = Smartphone;
-            else if (lowerName.includes('baby') || lowerName.includes('child')) GoalIcon = Baby;
-            else if (lowerName.includes('gift') || lowerName.includes('present')) GoalIcon = Gift;
-
-            return (
-              <div key={g.id} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-gray-800/50 rounded-xl border border-slate-100 dark:border-gray-700/50">
-                <div className="flex items-center gap-4">
-                  <div className="relative w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-900 rounded-full shadow-sm border border-slate-200 dark:border-gray-700 shrink-0">
-                    <GoalIcon className="w-6 h-6 text-slate-300 dark:text-gray-600 absolute" />
-                    <div 
-                      className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-full"
-                      style={{ clipPath: `inset(${100 - pct}% 0 0 0)` }}
-                    >
-                      <GoalIcon className="w-6 h-6 text-purple-500" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-800 dark:text-gray-200">{g.name}</p>
-                    <p className="text-xs text-slate-500 dark:text-gray-400 mt-0.5">Target: {formatCurrency(g.targetAmount)} | Linked: {acc ? acc.name : 'Unknown'}</p>
-                  </div>
-                </div>
-                <button onClick={() => deleteGoal(g.id)} className="text-red-400 hover:text-red-500 p-2"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            );
-          }) : <p className="text-slate-400 dark:text-gray-500 text-sm italic">No goals defined yet.</p>}
-        </div>
       </div>
     </div>
   );
