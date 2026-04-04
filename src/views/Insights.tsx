@@ -2,17 +2,21 @@ import React, { useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency } from '../utils/finance';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Activity, Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { SpendingHeatmap } from '../components/SpendingHeatmap';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 export const Insights = ({ switchTab }: { switchTab: (tab: string) => void }) => {
   const { accounts, transactions, setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate } = useFinance();
 
-  const { expenseData, incomeVsExpenseData, topExpenses } = useMemo(() => {
+  const { expenseData, incomeVsExpenseData, topExpenses, currentMonthMetrics } = useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
+
+    let currentIncome = 0;
+    let currentExpense = 0;
 
     // 1. Expense Breakdown (Current Month)
     const expenseMap: Record<string, { value: number, id: string }> = {};
@@ -23,11 +27,18 @@ export const Insights = ({ switchTab }: { switchTab: (tab: string) => void }) =>
 
     monthlyTxs.forEach(t => {
       const drAcc = accounts.find(a => a.id === t.debitAccount);
+      const crAcc = accounts.find(a => a.id === t.creditAccount);
+
       if (drAcc && drAcc.type === 'expense') {
         if (!expenseMap[drAcc.name]) {
           expenseMap[drAcc.name] = { value: 0, id: drAcc.id };
         }
         expenseMap[drAcc.name].value += t.amount;
+        currentExpense += t.amount;
+      }
+      
+      if (crAcc && crAcc.type === 'income') {
+        currentIncome += t.amount;
       }
     });
 
@@ -68,7 +79,14 @@ export const Insights = ({ switchTab }: { switchTab: (tab: string) => void }) =>
       Expense: data.expense
     }));
 
-    return { expenseData, incomeVsExpenseData, topExpenses };
+    const currentMonthMetrics = {
+      income: currentIncome,
+      expense: currentExpense,
+      savings: currentIncome - currentExpense,
+      savingsRate: currentIncome > 0 ? ((currentIncome - currentExpense) / currentIncome) * 100 : 0
+    };
+
+    return { expenseData, incomeVsExpenseData, topExpenses, currentMonthMetrics };
   }, [accounts, transactions]);
 
   const totalMonthlyExpense = expenseData.reduce((sum, item) => sum + item.value, 0);
@@ -82,6 +100,42 @@ export const Insights = ({ switchTab }: { switchTab: (tab: string) => void }) =>
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Insights</h2>
           <p className="text-slate-500 dark:text-gray-400 text-sm">Visual analytics of your finances</p>
+        </div>
+      </div>
+
+      {/* Key Metrics Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <ArrowDownRight className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-500 dark:text-gray-400">This Month's Income</p>
+            <p className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(currentMonthMetrics.income)}</p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400">
+            <ArrowUpRight className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-500 dark:text-gray-400">This Month's Expenses</p>
+            <p className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(currentMonthMetrics.expense)}</p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+            <Wallet className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-500 dark:text-gray-400">Net Savings</p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(currentMonthMetrics.savings)}</p>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${currentMonthMetrics.savingsRate >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                {currentMonthMetrics.savingsRate.toFixed(1)}%
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -184,6 +238,11 @@ export const Insights = ({ switchTab }: { switchTab: (tab: string) => void }) =>
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
+
+      {/* Spending Heatmap */}
+      <div className="w-full">
+        <SpendingHeatmap />
       </div>
     </div>
   );

@@ -5,7 +5,6 @@ import { formatCurrency, getTotals, getAccountBalance } from '../utils/finance';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { Chart } from 'react-google-charts';
-import { SpendingHeatmap } from '../components/SpendingHeatmap';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -616,10 +615,6 @@ export const Reports = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="col-span-1 lg:col-span-2">
-          <SpendingHeatmap />
         </div>
 
         <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm col-span-1 lg:col-span-2">

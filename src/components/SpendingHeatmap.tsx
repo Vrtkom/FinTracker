@@ -1,10 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { startOfYear, endOfYear, eachDayOfInterval, format, parseISO } from 'date-fns';
 
 export const SpendingHeatmap: React.FC = () => {
   const { transactions, accounts } = useFinance();
-  const [threshold, setThreshold] = useState<number>(1000);
+  const [threshold, setThreshold] = useState<number>(() => {
+    const saved = localStorage.getItem('spendingHeatmapThreshold');
+    return saved !== null ? Number(saved) : 1000;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('spendingHeatmapThreshold', threshold.toString());
+  }, [threshold]);
 
   const heatmapData = useMemo(() => {
     const today = new Date();
