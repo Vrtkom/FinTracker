@@ -17,9 +17,10 @@ import { RecurringModal } from './components/Modals/RecurringModal';
 import { ManageRecurringModal } from './components/Modals/ManageRecurringModal';
 import { VirtualPotsModal } from './components/Modals/VirtualPotsModal';
 import { ReceiptModal } from './components/Modals/ReceiptModal';
+import { Plus } from 'lucide-react';
 
 const AppContent = () => {
-  const { user, migrateLocalData } = useFinance();
+  const { user, migrateLocalData, setShowGlobalAddTx, setGlobalAddTxDefaults } = useFinance();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('fintrack_theme');
@@ -48,6 +49,13 @@ const AppContent = () => {
       localStorage.setItem('fintrack_migration_dismissed', 'true');
     }
   };
+
+  useEffect(() => {
+    // Clear predictive defaults when navigating away
+    if (activeTab !== 'transactions') {
+      setGlobalAddTxDefaults?.(null);
+    }
+  }, [activeTab, setGlobalAddTxDefaults]);
 
   React.useEffect(() => {
     if (isDarkMode) {
@@ -87,7 +95,7 @@ const AppContent = () => {
       {activeTab === 'dashboard' && <Dashboard switchTab={setActiveTab} />}
       {activeTab === 'accounts' && <Accounts />}
       {activeTab === 'transactions' && <Journal />}
-      {activeTab === 'budgets' && <Budgets />}
+      {activeTab === 'budgets' && <Budgets switchTab={setActiveTab} />}
       {activeTab === 'insights' && <Insights switchTab={setActiveTab} />}
       {activeTab === 'reports' && <Reports />}
       
@@ -95,6 +103,18 @@ const AppContent = () => {
       <ManageRecurringModal />
       <VirtualPotsModal />
       <ReceiptModal />
+
+      {/* Global Quick Add FAB */}
+      <button
+        onClick={() => {
+          setActiveTab('transactions');
+          setShowGlobalAddTx(true);
+        }}
+        className="fixed bottom-20 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all z-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        aria-label="Add Transaction"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
     </Layout>
   );
 };

@@ -40,6 +40,16 @@ interface FinanceContextType {
   
   journalFilterAccount: string;
   setJournalFilterAccount: (val: string) => void;
+  journalFilterSearch: string;
+  setJournalFilterSearch: (val: string) => void;
+  journalFilterDate: string;
+  setJournalFilterDate: (val: string) => void;
+  
+  showGlobalAddTx: boolean;
+  setShowGlobalAddTx: (val: boolean) => void;
+  
+  globalAddTxDefaults: { tags?: string, debitAccount?: string } | null;
+  setGlobalAddTxDefaults: (val: { tags?: string, debitAccount?: string } | null) => void;
   
   customReport: CustomReport;
   setCustomReport: (val: CustomReport) => void;
@@ -81,6 +91,10 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [managingPotsFor, setManagingPotsFor] = useState<string | null>(null);
   const [journalFilterAccount, setJournalFilterAccount] = useState<string>('');
+  const [journalFilterSearch, setJournalFilterSearch] = useState<string>('');
+  const [journalFilterDate, setJournalFilterDate] = useState<string>('all');
+  const [showGlobalAddTx, setShowGlobalAddTx] = useState<boolean>(false);
+  const [globalAddTxDefaults, setGlobalAddTxDefaults] = useState<{ tags?: string, debitAccount?: string } | null>(null);
   const [customReport, setCustomReport] = useState<CustomReport>(defaultReport);
   const [activityStreak, setActivityStreak] = useState<number>(0);
 
@@ -349,6 +363,10 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       scenario, setScenario,
       managingPotsFor, setManagingPotsFor,
       journalFilterAccount, setJournalFilterAccount,
+      journalFilterSearch, setJournalFilterSearch,
+      journalFilterDate, setJournalFilterDate,
+      showGlobalAddTx, setShowGlobalAddTx,
+      globalAddTxDefaults, setGlobalAddTxDefaults,
       customReport, setCustomReport,
       activityStreak,
       clearAllData, migrateLocalData

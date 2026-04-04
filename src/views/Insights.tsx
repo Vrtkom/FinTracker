@@ -7,7 +7,7 @@ import { PieChart as PieChartIcon, TrendingUp, TrendingDown, Activity } from 'lu
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 export const Insights = ({ switchTab }: { switchTab: (tab: string) => void }) => {
-  const { accounts, transactions, setJournalFilterAccount } = useFinance();
+  const { accounts, transactions, setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate } = useFinance();
 
   const { expenseData, incomeVsExpenseData, topExpenses } = useMemo(() => {
     const now = new Date();
@@ -105,9 +105,21 @@ export const Insights = ({ switchTab }: { switchTab: (tab: string) => void }) =>
                       outerRadius={80}
                       paddingAngle={5}
                       dataKey="value"
+                      onClick={(data) => {
+                        if (data && data.payload && data.payload.id) {
+                          setJournalFilterAccount(data.payload.id);
+                          setJournalFilterSearch('');
+                          setJournalFilterDate('all');
+                          switchTab('transactions');
+                        }
+                      }}
                     >
                       {expenseData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={COLORS[index % COLORS.length]} 
+                          className="cursor-pointer hover:opacity-80 transition-opacity"
+                        />
                       ))}
                     </Pie>
                     <RechartsTooltip 
@@ -124,6 +136,8 @@ export const Insights = ({ switchTab }: { switchTab: (tab: string) => void }) =>
                     className="flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
                     onClick={() => {
                       setJournalFilterAccount(item.id);
+                      setJournalFilterSearch('');
+                      setJournalFilterDate('all');
                       switchTab('transactions');
                     }}
                   >

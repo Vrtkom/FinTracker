@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency } from '../utils/finance';
-import { Target, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Target, Plus, Trash2, AlertCircle, ArrowRight } from 'lucide-react';
 
-export const Budgets = () => {
-  const { budgets, setBudgets, transactions } = useFinance();
+export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => {
+  const { budgets, setBudgets, transactions, setJournalFilterSearch, setJournalFilterAccount, setJournalFilterDate, setGlobalAddTxDefaults } = useFinance();
   const [isAdding, setIsAdding] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [newLimit, setNewLimit] = useState('');
@@ -49,6 +49,13 @@ export const Budgets = () => {
 
   const handleDelete = (id: string) => {
     setBudgets(budgets.filter(b => b.id !== id));
+  };
+
+  const handleBudgetClick = (tag: string) => {
+    setJournalFilterSearch(`#${tag}`);
+    setJournalFilterAccount('');
+    setJournalFilterDate('all');
+    switchTab('transactions');
   };
 
   return (
@@ -118,9 +125,15 @@ export const Budgets = () => {
           else if (isWarning) barColor = 'bg-amber-500';
 
           return (
-            <div key={b.id} className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm relative group">
+            <div 
+              key={b.id} 
+              onClick={() => handleBudgetClick(b.tag)}
+              onMouseEnter={() => setGlobalAddTxDefaults({ tags: b.tag })}
+              onTouchStart={() => setGlobalAddTxDefaults({ tags: b.tag })}
+              className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm relative group cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+            >
               <button 
-                onClick={() => handleDelete(b.id)}
+                onClick={(e) => { e.stopPropagation(); handleDelete(b.id); }}
                 className="absolute top-4 right-4 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Trash2 className="w-4 h-4" />
@@ -128,7 +141,10 @@ export const Budgets = () => {
               
               <div className="flex justify-between items-end mb-2">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">#{b.tag}</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 flex items-center gap-1">
+                    #{b.tag}
+                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
+                  </span>
                   <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{formatCurrency(b.spent)}</h3>
                 </div>
                 <div className="text-right">

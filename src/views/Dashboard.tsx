@@ -2,9 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { Coffee, Coins, Lock, CreditCard, Wallet, CalendarDays, Activity, LayoutGrid, Trophy, Repeat, Target, Paperclip, X, Home, Car, Plane, GraduationCap, Heart, PiggyBank, Laptop, Smartphone, Baby, Gift } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getTotals, getAverages, getGamificationStreaks, getAccountBalance } from '../utils/finance';
+import { TransactionSlideOver } from '../components/TransactionSlideOver';
 
 export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) => {
   const { accounts, transactions, recurring, goals, hideBalances, setHideBalances } = useFinance();
+  const [slideOverTxId, setSlideOverTxId] = useState<string | null>(null);
 
   const totals = useMemo(() => getTotals(accounts, transactions), [accounts, transactions]);
   const avgs = useMemo(() => getAverages(accounts, transactions), [accounts, transactions]);
@@ -356,7 +358,11 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
                 const drAcc = accounts.find(a => a.id === t.debitAccount)?.name || 'Unknown';
                 const isFuture = t.date > todayStr;
                 return (
-                  <div key={t.id} className="flex justify-between items-center p-3.5 md:p-4 bg-slate-50 hover:bg-slate-100 dark:bg-gray-850 dark:hover:bg-gray-800 rounded-xl border border-slate-100 dark:border-gray-800 transition-colors">
+                  <div 
+                    key={t.id} 
+                    onClick={() => setSlideOverTxId(t.id)}
+                    className="flex justify-between items-center p-3.5 md:p-4 bg-slate-50 hover:bg-slate-100 dark:bg-gray-850 dark:hover:bg-gray-800 rounded-xl border border-slate-100 dark:border-gray-800 transition-colors cursor-pointer"
+                  >
                     <div className="truncate pr-4 flex-1">
                       <p className="font-medium text-slate-800 dark:text-gray-200 truncate flex items-center gap-2">
                         {t.description}
@@ -497,6 +503,12 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
           </div>
         </div>
       </div>
+
+      <TransactionSlideOver 
+        isOpen={!!slideOverTxId} 
+        onClose={() => setSlideOverTxId(null)} 
+        transactionId={slideOverTxId} 
+      />
     </div>
   );
 };

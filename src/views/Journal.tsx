@@ -6,7 +6,7 @@ import { formatCurrency, getAccountBalance } from '../utils/finance';
 import { parseNaturalLanguageTransaction, parseReceipt } from '../services/geminiService';
 
 export const Journal = () => {
-  const { accounts, transactions, setTransactions, recurring, setRecurring, setViewingReceipt, journalFilterAccount, setJournalFilterAccount } = useFinance();
+  const { accounts, transactions, setTransactions, recurring, setRecurring, setViewingReceipt, journalFilterAccount, setJournalFilterAccount, journalFilterSearch, setJournalFilterSearch, journalFilterDate, setJournalFilterDate, showGlobalAddTx, setShowGlobalAddTx, globalAddTxDefaults, setGlobalAddTxDefaults } = useFinance();
   
   const [isAddingTx, setIsAddingTx] = useState(false);
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
@@ -33,11 +33,30 @@ export const Journal = () => {
   const [showDebitOptions, setShowDebitOptions] = useState(false);
   const [showCreditOptions, setShowCreditOptions] = useState(false);
 
-  const [filterSearch, setFilterSearch] = useState('');
-  const [filterDate, setFilterDate] = useState('all');
-
   const debitRef = useRef<HTMLDivElement>(null);
   const creditRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showGlobalAddTx) {
+      setIsAddingTx(true);
+      setShowGlobalAddTx(false);
+      window.scrollTo(0, 0);
+
+      if (globalAddTxDefaults) {
+        if (globalAddTxDefaults.debitAccount) {
+          setTxDebit(globalAddTxDefaults.debitAccount);
+          const acc = accounts.find(a => a.id === globalAddTxDefaults.debitAccount);
+          if (acc) {
+            setTxDebitSearch(`${acc.name} (${acc.type.charAt(0).toUpperCase() + acc.type.slice(1)})`);
+          }
+        }
+        if (globalAddTxDefaults.tags) {
+          setTxTags(globalAddTxDefaults.tags);
+        }
+        setGlobalAddTxDefaults(null);
+      }
+    }
+  }, [showGlobalAddTx, setShowGlobalAddTx, globalAddTxDefaults, setGlobalAddTxDefaults, accounts]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -424,8 +443,8 @@ export const Journal = () => {
   };
 
   let filteredTxs = [...transactions];
-  if (filterSearch) {
-    const term = filterSearch.toLowerCase();
+  if (journalFilterSearch) {
+    const term = journalFilterSearch.toLowerCase();
     filteredTxs = filteredTxs.filter(t => 
       t.description.toLowerCase().includes(term) || 
       (t.tags && t.tags.some(tag => tag.toLowerCase().includes(term)))
@@ -434,15 +453,15 @@ export const Journal = () => {
   if (journalFilterAccount) {
     filteredTxs = filteredTxs.filter(t => t.debitAccount === journalFilterAccount || t.creditAccount === journalFilterAccount);
   }
-  if (filterDate !== 'all') {
+  if (journalFilterDate !== 'all') {
     const now = new Date();
     const m = now.getMonth();
     const y = now.getFullYear();
     filteredTxs = filteredTxs.filter(t => {
       const td = new Date(t.date);
-      if (filterDate === 'this_month') {
+      if (journalFilterDate === 'this_month') {
         return td.getMonth() === m && td.getFullYear() === y;
-      } else if (filterDate === 'last_month') {
+      } else if (journalFilterDate === 'last_month') {
         const prevM = m === 0 ? 11 : m - 1;
         const prevY = m === 0 ? y - 1 : y;
         return td.getMonth() === prevM && td.getFullYear() === prevY;
@@ -664,14 +683,14 @@ export const Journal = () => {
 
       <div className="bg-white dark:bg-gray-900 p-4 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm mb-6 flex flex-col md:flex-row gap-3 md:items-center">
         <div className="flex-1 relative">
-          <input type="text" placeholder="Search entries or #tags..." value={filterSearch} onChange={e => setFilterSearch(e.target.value)} className={`${inputClasses} pl-10 py-2.5`} />
+          <input type="text" placeholder="Search entries or #tags..." value={journalFilterSearch} onChange={e => setJournalFilterSearch(e.target.value)} className={`${inputClasses} pl-10 py-2.5`} />
           <Search className="w-4 h-4 absolute left-3 top-[14px] text-slate-400" />
         </div>
         <select value={journalFilterAccount} onChange={e => setJournalFilterAccount(e.target.value)} className={`${inputClasses} w-full md:w-48 py-2.5`}>
           <option value="">All Accounts</option>
           {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
-        <select value={filterDate} onChange={e => setFilterDate(e.target.value)} className={`${inputClasses} w-full md:w-48 py-2.5`}>
+        <select value={journalFilterDate} onChange={e => setJournalFilterDate(e.target.value)} className={`${inputClasses} w-full md:w-48 py-2.5`}>
           <option value="all">All Time</option>
           <option value="this_month">This Month</option>
           <option value="last_month">Last Month</option>
