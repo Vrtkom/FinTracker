@@ -1,6 +1,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let aiClient: GoogleGenAI | null = null;
+
+const getAIClient = () => {
+  if (!aiClient) {
+    // You can paste your API key here if you want to hardcode it
+    const hardcodedKey = "AIzaSyBRhhFbQMsVtM-MQNe97LKIfJqPgXLY04A"; 
+    const apiKey = hardcodedKey || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    
+    if (!apiKey) {
+      throw new Error("Gemini API Key is missing. Please set it in your environment variables or hardcode it.");
+    }
+    aiClient = new GoogleGenAI({ apiKey });
+  }
+  return aiClient;
+};
 
 export const parseReceipt = async (
   base64Image: string,
@@ -11,6 +25,7 @@ export const parseReceipt = async (
     const base64Data = base64Image.split(',')[1];
     const mimeType = base64Image.split(';')[0].split(':')[1];
 
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: "gemini-3.1-flash-preview",
       contents: [
@@ -66,6 +81,7 @@ export const parseNaturalLanguageTransaction = async (
   accounts: { id: string, name: string, type: string }[]
 ) => {
   try {
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Parse the following natural language transaction into structured data.
