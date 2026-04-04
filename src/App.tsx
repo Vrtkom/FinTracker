@@ -18,6 +18,7 @@ import { ManageRecurringModal } from './components/Modals/ManageRecurringModal';
 import { VirtualPotsModal } from './components/Modals/VirtualPotsModal';
 import { ReceiptModal } from './components/Modals/ReceiptModal';
 import { Plus } from 'lucide-react';
+import { Toaster } from 'sonner';
 
 const AppContent = () => {
   const { user, migrateLocalData, setShowGlobalAddTx, setGlobalAddTxDefaults } = useFinance();
@@ -118,8 +119,6 @@ const AppContent = () => {
     </Layout>
   );
 };
-
-import { Toaster } from 'sonner';
 
 export default function App() {
   return (
