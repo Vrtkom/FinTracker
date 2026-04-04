@@ -1,5 +1,6 @@
 export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
 export type Liquidity = 'liquid' | 'invested';
+export type TransactionIntent = 'need' | 'want' | 'investment' | 'transfer';
 
 export interface Pot {
   id: string;
@@ -18,6 +19,13 @@ export interface Account {
   pots?: Pot[];
 }
 
+export interface Split {
+  id: string;
+  contactName: string;
+  amount: number;
+  settled: boolean;
+}
+
 export interface Transaction {
   id: string;
   date: string;
@@ -29,6 +37,8 @@ export interface Transaction {
   receipt: string | null;
   tags?: string[];
   groupId?: string;
+  intent?: TransactionIntent; // Need vs Want classification
+  splits?: Split[]; // Splitwise-style bill splitting
 }
 
 export interface Recurring {
@@ -45,6 +55,13 @@ export interface Goal {
   name: string;
   targetAmount: number;
   linkedAccountId: string;
+}
+
+export interface Budget {
+  id: string;
+  tag: string;
+  limit: number;
+  period: 'monthly';
 }
 
 export interface Scenario {

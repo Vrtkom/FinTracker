@@ -62,6 +62,19 @@
         "uid": { "type": "string" }
       },
       "required": ["id", "name", "targetAmount", "linkedAccountId", "uid"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "A budget limit for a specific tag",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tag": { "type": "string" },
+        "limit": { "type": "number" },
+        "period": { "type": "string", "enum": ["monthly"] },
+        "uid": { "type": "string" }
+      },
+      "required": ["id", "tag", "limit", "period", "uid"]
     }
   },
   "firestore": {
@@ -80,6 +93,10 @@
     "/users/{userId}/goals/{goalId}": {
       "schema": { "$ref": "#/entities/Goal" },
       "description": "User's financial goals"
+    },
+    "/users/{userId}/budgets/{budgetId}": {
+      "schema": { "$ref": "#/entities/Budget" },
+      "description": "User's tag-based budgets"
     }
   }
 }

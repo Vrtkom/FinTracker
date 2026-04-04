@@ -3,6 +3,7 @@ import { Plus, Search, ArrowUpDown, ArrowLeftRight, Camera, CheckCircle, ShieldC
 import { toast } from 'sonner';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
+import { parseNaturalLanguageTransaction, parseReceipt } from '../services/geminiService';
 
 export const Journal = () => {
   const { accounts, transactions, setTransactions, recurring, setRecurring, setViewingReceipt, journalFilterAccount, setJournalFilterAccount } = useFinance();
@@ -19,7 +20,11 @@ export const Journal = () => {
   const [txCleared, setTxCleared] = useState(true);
   const [txReceiptBase64, setTxReceiptBase64] = useState<string | null>(null);
   const [txTags, setTxTags] = useState('');
+  const [txIntent, setTxIntent] = useState<'need' | 'want' | 'investment' | 'transfer' | undefined>(undefined);
   
+  const [magicInput, setMagicInput] = useState('');
+  const [isMagicLoading, setIsMagicLoading] = useState(false);
+
   const [isSplitMode, setIsSplitMode] = useState(false);
   const [splitMainAccount, setSplitMainAccount] = useState('');
   const [splitType, setSplitType] = useState<'out' | 'in'>('out');
@@ -49,7 +54,34 @@ export const Journal = () => {
 
   const handleDescInput = (val: string) => {
     setTxDesc(val);
+    if (!val.trim()) return;
+
     const lowerVal = val.toLowerCase();
+    
+    // 1. Try to find exact or partial match in past transactions
+    const pastTx = [...transactions].reverse().find(t => 
+      t.description.toLowerCase().includes(lowerVal) || lowerVal.includes(t.description.toLowerCase())
+    );
+
+    if (pastTx) {
+      if (pastTx.debitAccount && txDebit !== pastTx.debitAccount) {
+        const acc = accounts.find(a => a.id === pastTx.debitAccount);
+        if (acc && !acc.isArchived) {
+          setTxDebit(acc.id);
+          setTxDebitSearch(`${acc.name} (${acc.type.charAt(0).toUpperCase() + acc.type.slice(1)})`);
+          handleDebitChange(acc.id);
+        }
+      }
+      if (pastTx.tags && pastTx.tags.length > 0 && !txTags) {
+        setTxTags(pastTx.tags.join(', '));
+      }
+      if (pastTx.intent && !txIntent) {
+        setTxIntent(pastTx.intent);
+      }
+      return;
+    }
+
+    // 2. Fallback to hardcoded keywords
     const autoTags: Record<string, string[]> = {
       'food': ['zomato', 'swiggy', 'blinkit', 'zepto', 'dinner', 'lunch', 'food', 'restaurant', 'mcdonalds'],
       'travel': ['uber', 'ola', 'rapido', 'flight', 'train', 'bus', 'fuel', 'petrol', 'metro', 'auto'],
@@ -94,6 +126,8 @@ export const Journal = () => {
     setTxCreditSearch(tempText);
   };
 
+  const [isReceiptParsing, setIsReceiptParsing] = useState(false);
+
   const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -101,7 +135,7 @@ export const Journal = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement('canvas');
         const MAX_WIDTH = 800; 
         const scaleSize = MAX_WIDTH / img.width;
@@ -109,11 +143,96 @@ export const Journal = () => {
         canvas.height = img.height * scaleSize;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setTxReceiptBase64(canvas.toDataURL('image/jpeg', 0.6));
+        
+        const base64 = canvas.toDataURL('image/jpeg', 0.6);
+        setTxReceiptBase64(base64);
+        
+        // Parse receipt
+        setIsReceiptParsing(true);
+        toast.info('Parsing receipt...');
+        try {
+          const parsed = await parseReceipt(base64, accounts);
+          if (parsed) {
+            if (parsed.amount) setTxAmount(parsed.amount.toString());
+            if (parsed.description) setTxDesc(parsed.description);
+            if (parsed.date) setTxDate(parsed.date);
+            
+            if (parsed.debitAccount) {
+              const acc = accounts.find(a => a.id === parsed.debitAccount);
+              if (acc) {
+                setTxDebit(acc.id);
+                setTxDebitSearch(`${acc.name} (${acc.type.charAt(0).toUpperCase() + acc.type.slice(1)})`);
+              }
+            }
+            
+            if (parsed.tags && parsed.tags.length > 0) {
+              setTxTags(parsed.tags.join(', '));
+            }
+            
+            if (parsed.intent) {
+              setTxIntent(parsed.intent as any);
+            }
+            
+            toast.success('Receipt parsed successfully!');
+          } else {
+            toast.error('Could not extract details from receipt.');
+          }
+        } catch (error) {
+          toast.error('Failed to parse receipt.');
+        } finally {
+          setIsReceiptParsing(false);
+        }
       };
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleMagicSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!magicInput.trim()) return;
+    
+    setIsMagicLoading(true);
+    try {
+      const parsed = await parseNaturalLanguageTransaction(magicInput, accounts);
+      if (parsed) {
+        if (parsed.amount) setTxAmount(parsed.amount.toString());
+        if (parsed.description) setTxDesc(parsed.description);
+        
+        if (parsed.debitAccount) {
+          const acc = accounts.find(a => a.id === parsed.debitAccount);
+          if (acc) {
+            setTxDebit(acc.id);
+            setTxDebitSearch(`${acc.name} (${acc.type.charAt(0).toUpperCase() + acc.type.slice(1)})`);
+          }
+        }
+        
+        if (parsed.creditAccount) {
+          const acc = accounts.find(a => a.id === parsed.creditAccount);
+          if (acc) {
+            setTxCredit(acc.id);
+            setTxCreditSearch(`${acc.name} (${acc.type.charAt(0).toUpperCase() + acc.type.slice(1)})`);
+          }
+        }
+
+        if (parsed.tags && parsed.tags.length > 0) {
+          setTxTags(parsed.tags.join(', '));
+        }
+
+        if (parsed.intent) {
+          setTxIntent(parsed.intent as any);
+        }
+
+        setMagicInput('');
+        toast.success('Transaction parsed successfully! Please review and save.');
+      } else {
+        toast.error('Could not parse transaction. Please enter manually.');
+      }
+    } catch (error) {
+      toast.error('Failed to parse transaction. Check API key or enter manually.');
+    } finally {
+      setIsMagicLoading(false);
+    }
   };
 
   const addTransaction = (e: React.FormEvent) => {
@@ -170,7 +289,8 @@ export const Journal = () => {
         creditAccount: txCredit,
         cleared: txCleared,
         receipt: txReceiptBase64,
-        tags: txTags.split(',').map(t => t.trim()).filter(Boolean)
+        tags: txTags.split(',').map(t => t.trim()).filter(Boolean),
+        intent: txIntent
       };
       
       if (txRecurring) {
@@ -195,6 +315,7 @@ export const Journal = () => {
     setTxCleared(true);
     setTxReceiptBase64(null);
     setTxTags('');
+    setTxIntent(undefined);
     setIsSplitMode(false);
     setSplitMainAccount('');
     setSplits([{ accountId: '', amount: '', description: '' }, { accountId: '', amount: '', description: '' }]);
@@ -353,15 +474,38 @@ export const Journal = () => {
       </div>
       
       {isAddingTx && (
-        <form onSubmit={addTransaction} className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm mb-6">
-          <div className="flex justify-center mb-6">
+        <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm mb-6">
+          <form onSubmit={handleMagicSubmit} className="mb-8 pb-8 border-b border-slate-100 dark:border-gray-800">
+            <label className="block text-sm font-bold text-slate-700 dark:text-gray-300 mb-2">✨ Magic Input (AI)</label>
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                value={magicInput}
+                onChange={e => setMagicInput(e.target.value)}
+                placeholder="e.g. Spent 500 on Swiggy from HDFC" 
+                className="flex-1 p-3.5 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/30 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl outline-none transition-all text-sm md:text-base placeholder-indigo-300 dark:placeholder-indigo-700"
+                disabled={isMagicLoading}
+              />
+              <button 
+                type="submit" 
+                disabled={isMagicLoading || !magicInput.trim()}
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-6 py-3.5 rounded-xl font-bold transition-colors whitespace-nowrap"
+              >
+                {isMagicLoading ? 'Parsing...' : 'Auto-Fill'}
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-gray-500 mt-2">Describe the transaction naturally. AI will fill the form below.</p>
+          </form>
+
+          <form onSubmit={addTransaction}>
+            <div className="flex justify-center mb-6">
             <div className="bg-slate-100 dark:bg-gray-800 p-1 rounded-lg inline-flex">
               <button type="button" onClick={() => setIsSplitMode(false)} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${!isSplitMode ? 'bg-white dark:bg-gray-700 shadow-sm text-slate-800 dark:text-gray-200' : 'text-slate-500 dark:text-gray-400'}`}>Single Entry</button>
               <button type="button" onClick={() => setIsSplitMode(true)} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${isSplitMode ? 'bg-white dark:bg-gray-700 shadow-sm text-slate-800 dark:text-gray-200' : 'text-slate-500 dark:text-gray-400'}`}>Split Entry</button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 md:gap-6">
             <div className="lg:col-span-1">
               <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Date</label>
               <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className={inputClasses} required />
@@ -374,9 +518,19 @@ export const Journal = () => {
               <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Tags <span className="text-[10px] font-normal italic">(comma separated)</span></label>
               <input type="text" value={txTags} onChange={e => setTxTags(e.target.value)} placeholder="e.g. food, trip" className={inputClasses} />
             </div>
+            <div className="lg:col-span-1">
+              <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Classification</label>
+              <select value={txIntent || ''} onChange={e => setTxIntent(e.target.value ? (e.target.value as any) : undefined)} className={inputClasses}>
+                <option value="">Unclassified</option>
+                <option value="need">Need (50%)</option>
+                <option value="want">Want (30%)</option>
+                <option value="investment">Savings/Debt (20%)</option>
+                <option value="transfer">Transfer</option>
+              </select>
+            </div>
 
             {isSplitMode ? (
-              <div className="lg:col-span-5 bg-slate-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-slate-200 dark:border-gray-700">
+              <div className="lg:col-span-6 bg-slate-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-slate-200 dark:border-gray-700">
                 <div className="flex flex-col md:flex-row gap-4 mb-4">
                   <div className="flex-1">
                     <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Main Account</label>
@@ -481,7 +635,7 @@ export const Journal = () => {
               </>
             )}
 
-            <div className="lg:col-span-5 flex flex-col md:flex-row justify-between items-center mt-2 md:mt-4 md:border-t border-slate-100 dark:border-gray-800 md:pt-6 gap-4">
+            <div className="lg:col-span-6 flex flex-col md:flex-row justify-between items-center mt-2 md:mt-4 md:border-t border-slate-100 dark:border-gray-800 md:pt-6 gap-4">
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 dark:text-gray-400">
                   <input type="checkbox" checked={txRecurring} onChange={e => setTxRecurring(e.target.checked)} className="w-4 h-4 rounded border-slate-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800 cursor-pointer accent-blue-600" />
@@ -493,8 +647,8 @@ export const Journal = () => {
                 </label>
               </div>
               <div className="flex items-center gap-3 w-full md:w-auto">
-                <button type="button" onClick={() => document.getElementById('txReceiptFile')?.click()} className="flex-1 md:flex-none text-slate-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 flex justify-center items-center gap-1.5 text-sm bg-slate-100 dark:bg-gray-800 px-4 py-3.5 rounded-xl transition-colors">
-                  <Camera className="w-4 h-4" /> <span className={txReceiptBase64 ? 'text-emerald-500 font-bold' : ''}>{txReceiptBase64 ? 'Attached ✓' : 'Receipt'}</span>
+                <button type="button" disabled={isReceiptParsing} onClick={() => document.getElementById('txReceiptFile')?.click()} className="flex-1 md:flex-none text-slate-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 flex justify-center items-center gap-1.5 text-sm bg-slate-100 dark:bg-gray-800 px-4 py-3.5 rounded-xl transition-colors disabled:opacity-50">
+                  <Camera className="w-4 h-4" /> <span className={txReceiptBase64 ? 'text-emerald-500 font-bold' : ''}>{isReceiptParsing ? 'Parsing...' : txReceiptBase64 ? 'Attached ✓' : 'Receipt'}</span>
                 </button>
                 <input type="file" id="txReceiptFile" accept="image/*" className="hidden" onChange={handleReceiptUpload} />
                 
@@ -505,6 +659,7 @@ export const Journal = () => {
             </div>
           </div>
         </form>
+        </div>
       )}
 
       <div className="bg-white dark:bg-gray-900 p-4 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm mb-6 flex flex-col md:flex-row gap-3 md:items-center">
@@ -573,6 +728,7 @@ export const Journal = () => {
                         {t.description}
                         {t.receipt && <button onClick={() => setViewingReceipt(t.receipt)} title="View Receipt" className="text-blue-500 hover:text-blue-600 bg-blue-50 dark:bg-blue-900/30 p-1.5 rounded-lg"><Paperclip className="w-4 h-4" /></button>}
                         {isFuture && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">Pending</span>}
+                        {t.intent && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${t.intent === 'need' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : t.intent === 'want' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : t.intent === 'investment' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-400'}`}>{t.intent}</span>}
                       </div>
                       {t.tags && t.tags.length > 0 && (
                         <div className="flex gap-1 flex-wrap">
@@ -618,6 +774,7 @@ export const Journal = () => {
                       {t.description}
                       {t.receipt && <button onClick={() => setViewingReceipt(t.receipt)} className="text-blue-500 bg-blue-50 dark:bg-blue-900/30 p-1 rounded-md"><Paperclip className="w-3.5 h-3.5" /></button>}
                       {isFuture && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">Pending</span>}
+                      {t.intent && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${t.intent === 'need' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : t.intent === 'want' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : t.intent === 'investment' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-400'}`}>{t.intent}</span>}
                     </p>
                     {t.tags && t.tags.length > 0 && (
                       <div className="flex gap-1 flex-wrap mt-1.5">

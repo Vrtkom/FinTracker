@@ -140,6 +140,15 @@ service cloud.firestore {
              data.linkedAccountId is string && data.linkedAccountId.size() > 0 && data.linkedAccountId.size() < 100;
     }
 
+    function isValidBudget() {
+      let data = request.resource.data;
+      return hasRequiredFields(['id', 'tag', 'limit', 'period', 'uid']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.tag is string && data.tag.size() > 0 && data.tag.size() < 100 &&
+             data.limit is number && data.limit >= 0 &&
+             data.period == 'monthly';
+    }
+
     function isValidStat() {
       let data = request.resource.data;
       return data.keys().hasOnly(['lastActiveDate', 'streak']) &&
@@ -177,6 +186,13 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidGoal() && uidUnchanged();
         allow update: if isOwner(userId) && isDocOwner() && isValidGoal() && uidNotModified();
+        allow delete: if isOwner(userId) && isDocOwner();
+      }
+      
+      match /budgets/{budgetId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidBudget() && uidUnchanged();
+        allow update: if isOwner(userId) && isDocOwner() && isValidBudget() && uidNotModified();
         allow delete: if isOwner(userId) && isDocOwner();
       }
       

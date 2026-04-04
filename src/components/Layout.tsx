@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Landmark, LayoutDashboard, Wallet, BookOpen, PieChart, 
   Download, Upload, Trash2, Repeat, LogOut, Eye, EyeOff, Sun, Moon,
-  Activity, Flame, AlertTriangle
+  Activity, Flame, AlertTriangle, Target
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { getTotals } from '../utils/finance';
@@ -11,6 +11,7 @@ const tabs = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', short: 'Home' },
   { id: 'accounts', icon: Wallet, label: 'Accounts & Goals', short: 'Accounts' },
   { id: 'transactions', icon: BookOpen, label: 'Journal Entries', short: 'Journal' },
+  { id: 'budgets', icon: Target, label: 'Budgets', short: 'Budgets' },
   { id: 'insights', icon: Activity, label: 'Insights', short: 'Insights' },
   { id: 'reports', icon: PieChart, label: 'Statements & Reports', short: 'Reports' },
 ];
