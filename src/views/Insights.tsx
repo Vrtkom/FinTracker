@@ -242,7 +242,12 @@ export const Insights = ({ switchTab }: { switchTab: (tab: string) => void }) =>
 
       {/* Spending Heatmap */}
       <div className="w-full">
-        <SpendingHeatmap />
+        <SpendingHeatmap onDayClick={(dateStr) => {
+          setJournalFilterDate(dateStr);
+          setJournalFilterAccount('');
+          setJournalFilterSearch('');
+          switchTab('transactions');
+        }} />
       </div>
     </div>
   );

@@ -24,7 +24,8 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
     accounts, transactions, 
     setAccounts, setTransactions, setRecurring, setGoals,
     activityStreak,
-    clearAllData 
+    clearAllData,
+    setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate
   } = useFinance();
   
   const [hasImbalance, setHasImbalance] = useState(false);
@@ -183,7 +184,14 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
             {tabs.map(tab => (
               <button 
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)} 
+                onClick={() => {
+                  if (tab.id === 'transactions') {
+                    setJournalFilterAccount('');
+                    setJournalFilterSearch('');
+                    setJournalFilterDate('all');
+                  }
+                  setActiveTab(tab.id);
+                }} 
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 dark:shadow-blue-900/20' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white'}`}
               >
                 <tab.icon className="w-5 h-5" />
@@ -254,7 +262,14 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
         {tabs.map(tab => (
           <button 
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)} 
+            onClick={() => {
+              if (tab.id === 'transactions') {
+                setJournalFilterAccount('');
+                setJournalFilterSearch('');
+                setJournalFilterDate('all');
+              }
+              setActiveTab(tab.id);
+            }} 
             className={`flex flex-col items-center justify-center w-full py-3 transition-colors ${activeTab === tab.id ? 'text-blue-600 dark:text-blue-500' : 'text-slate-400 hover:text-slate-600 dark:text-gray-500 dark:hover:text-gray-300'}`}
           >
             <tab.icon className={`w-6 h-6 mb-1 ${activeTab === tab.id ? 'fill-blue-100 dark:fill-blue-500/20' : ''}`} />

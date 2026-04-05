@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutGrid, Edit2, RefreshCw, Trash2, Target, Plus, Save, Home, Car, Plane, GraduationCap, Heart, PiggyBank, Laptop, Smartphone, Baby, Gift } from 'lucide-react';
+import { LayoutGrid, Edit2, RefreshCw, Trash2, Target, Plus, Save, Home, Car, Plane, GraduationCap, Heart, PiggyBank, Laptop, Smartphone, Baby, Gift, CreditCard, ArrowRight } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
 import { AccountType, Liquidity } from '../types';
 
-export const Accounts = () => {
-  const { accounts, setAccounts, transactions, setManagingPotsFor } = useFinance();
+export const Accounts = ({ switchTab }: { switchTab?: (tab: string) => void }) => {
+  const { accounts, setAccounts, transactions, setManagingPotsFor, setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate, setGlobalAddTxDefaults, goals } = useFinance();
   
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [newAccName, setNewAccName] = useState('');
@@ -91,8 +91,24 @@ export const Accounts = () => {
       <div className="bg-white dark:bg-gray-900 p-4 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm">
         <h3 className={`text-base md:text-lg font-bold mb-4 flex items-center gap-2 ${colorClass}`}>{title}</h3>
         <div className="space-y-2 md:space-y-3">
-          {acts.length > 0 ? acts.map(acc => (
-            <div key={acc.id} className={`flex flex-col p-3.5 md:p-4 bg-slate-50 dark:bg-gray-800/50 rounded-xl group border border-slate-100 dark:border-gray-700/50 hover:border-slate-300 dark:hover:border-gray-600 transition-colors ${acc.isArchived ? 'opacity-50' : ''}`}>
+          {acts.length > 0 ? acts.map(acc => {
+            const linkedGoals = goals.filter(g => g.linkedAccountId === acc.id);
+            const totalGoalTarget = linkedGoals.reduce((sum, g) => sum + g.targetAmount, 0);
+            const bal = getAccountBalance(acc.id, accounts, transactions);
+            
+            return (
+            <div 
+              key={acc.id} 
+              onClick={() => {
+                if (switchTab) {
+                  setJournalFilterAccount(acc.id);
+                  setJournalFilterSearch('');
+                  setJournalFilterDate('all');
+                  switchTab('transactions');
+                }
+              }}
+              className={`flex flex-col p-3.5 md:p-4 bg-slate-50 dark:bg-gray-800/50 rounded-xl group border border-slate-100 dark:border-gray-700/50 hover:border-slate-300 dark:hover:border-gray-600 transition-colors cursor-pointer ${acc.isArchived ? 'opacity-50' : ''}`}
+            >
               <div className="flex justify-between items-center">
                 <span className="text-sm md:text-base font-medium text-slate-800 dark:text-gray-200 truncate pr-2">
                   {acc.name} 
@@ -101,27 +117,52 @@ export const Accounts = () => {
                   {acc.type === 'expense' && (acc.budget || 0) > 0 && <span className="ml-2 text-[10px] uppercase font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-1.5 rounded border border-orange-100 dark:border-transparent">Limit: {formatCurrency(acc.budget || 0)}</span>}
                 </span>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="font-bold text-slate-900 dark:text-white text-sm md:text-base mr-1">{formatCurrency(getAccountBalance(acc.id, accounts, transactions))}</span>
+                  <span className="font-bold text-slate-900 dark:text-white text-sm md:text-base mr-1">{formatCurrency(bal)}</span>
+                  {acc.type === 'liability' && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (switchTab) {
+                          setGlobalAddTxDefaults({ type: 'transfer', creditAccount: acc.id });
+                          setJournalFilterAccount('');
+                          setJournalFilterSearch('');
+                          setJournalFilterDate('all');
+                          switchTab('transactions');
+                        }
+                      }} 
+                      title="Pay Bill" 
+                      className="text-slate-400 hover:text-emerald-500 dark:text-gray-500 dark:hover:text-emerald-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg opacity-100 md:opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      <span className="text-[10px] font-bold uppercase hidden md:inline">Pay</span>
+                    </button>
+                  )}
                   {acc.type === 'asset' && (
-                    <button onClick={() => setManagingPotsFor(acc.id)} title="Manage Pots" className="text-slate-400 hover:text-purple-500 dark:text-gray-500 dark:hover:text-purple-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg opacity-100 md:opacity-0 group-hover:opacity-100 transition-all">
+                    <button onClick={(e) => { e.stopPropagation(); setManagingPotsFor(acc.id); }} title="Manage Pots" className="text-slate-400 hover:text-purple-500 dark:text-gray-500 dark:hover:text-purple-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg opacity-100 md:opacity-0 group-hover:opacity-100 transition-all">
                       <LayoutGrid className="w-4 h-4" />
                     </button>
                   )}
-                  <button onClick={() => setEditingAccountId(acc.id)} title="Edit Account" className="text-slate-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg opacity-100 md:opacity-0 group-hover:opacity-100 transition-all">
+                  <button onClick={(e) => { e.stopPropagation(); setEditingAccountId(acc.id); }} title="Edit Account" className="text-slate-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg opacity-100 md:opacity-0 group-hover:opacity-100 transition-all">
                     <Edit2 className="w-4 h-4" />
                   </button>
                   {acc.isArchived ? (
-                    <button onClick={() => unarchiveAccount(acc.id)} title="Unarchive" className="text-slate-400 hover:text-emerald-500 dark:text-gray-500 dark:hover:text-emerald-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg transition-all">
+                    <button onClick={(e) => { e.stopPropagation(); unarchiveAccount(acc.id); }} title="Unarchive" className="text-slate-400 hover:text-emerald-500 dark:text-gray-500 dark:hover:text-emerald-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg transition-all">
                       <RefreshCw className="w-4 h-4" />
                     </button>
                   ) : (
-                    <button onClick={() => deleteAccount(acc.id)} title="Delete/Archive" className="text-slate-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg opacity-100 md:opacity-0 group-hover:opacity-100 transition-all">
+                    <button onClick={(e) => { e.stopPropagation(); deleteAccount(acc.id); }} title="Delete/Archive" className="text-slate-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg opacity-100 md:opacity-0 group-hover:opacity-100 transition-all">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
               </div>
               {acc.type === 'asset' && acc.liquidity === 'invested' && <p className="text-[11px] md:text-xs text-purple-600 dark:text-purple-400 mt-1">Invested</p>}
+              {acc.type === 'asset' && linkedGoals.length > 0 && (
+                <div className="mt-2 flex items-center gap-1.5 text-[10px] md:text-xs text-purple-600 dark:text-purple-400 font-medium">
+                  <Target className="w-3.5 h-3.5" />
+                  <span>{formatCurrency(Math.min(bal, totalGoalTarget))} reserved for {linkedGoals.length} goal(s)</span>
+                </div>
+              )}
               {acc.type === 'asset' && acc.pots && acc.pots.length > 0 && (
                 <>
                   <div className="mt-3 bg-slate-200 dark:bg-gray-700 h-1.5 rounded-full flex overflow-hidden">
@@ -131,7 +172,7 @@ export const Accounts = () => {
                 </>
               )}
             </div>
-          )) : <p className="text-xs md:text-sm text-slate-400 dark:text-gray-500 italic p-3 md:p-4 border border-dashed border-slate-200 dark:border-gray-700 rounded-xl text-center">No accounts</p>}
+          )}) : <p className="text-xs md:text-sm text-slate-400 dark:text-gray-500 italic p-3 md:p-4 border border-dashed border-slate-200 dark:border-gray-700 rounded-xl text-center">No accounts</p>}
         </div>
       </div>
     );

@@ -49,7 +49,7 @@ interface FinanceContextType {
   setShowGlobalAddTx: (val: boolean) => void;
   
   globalAddTxDefaults: { tags?: string, debitAccount?: string } | null;
-  setGlobalAddTxDefaults: (val: { tags?: string, debitAccount?: string } | null) => void;
+  setGlobalAddTxDefaults: (val: { tags?: string, debitAccount?: string, creditAccount?: string, type?: 'income' | 'expense' | 'transfer' } | null) => void;
   
   customReport: CustomReport;
   setCustomReport: (val: CustomReport) => void;
@@ -94,7 +94,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const [journalFilterSearch, setJournalFilterSearch] = useState<string>('');
   const [journalFilterDate, setJournalFilterDate] = useState<string>('all');
   const [showGlobalAddTx, setShowGlobalAddTx] = useState<boolean>(false);
-  const [globalAddTxDefaults, setGlobalAddTxDefaults] = useState<{ tags?: string, debitAccount?: string } | null>(null);
+  const [globalAddTxDefaults, setGlobalAddTxDefaults] = useState<{ tags?: string, debitAccount?: string, creditAccount?: string, type?: 'income' | 'expense' | 'transfer' } | null>(null);
   const [customReport, setCustomReport] = useState<CustomReport>(defaultReport);
   const [activityStreak, setActivityStreak] = useState<number>(0);
 

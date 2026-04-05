@@ -5,8 +5,8 @@ import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
 import { parseNaturalLanguageTransaction, parseReceipt } from '../services/geminiService';
 
-export const Journal = () => {
-  const { accounts, transactions, setTransactions, recurring, setRecurring, setViewingReceipt, journalFilterAccount, setJournalFilterAccount, journalFilterSearch, setJournalFilterSearch, journalFilterDate, setJournalFilterDate, showGlobalAddTx, setShowGlobalAddTx, globalAddTxDefaults, setGlobalAddTxDefaults } = useFinance();
+export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) => {
+  const { accounts, transactions, setTransactions, recurring, setRecurring, setViewingReceipt, journalFilterAccount, setJournalFilterAccount, journalFilterSearch, setJournalFilterSearch, journalFilterDate, setJournalFilterDate, showGlobalAddTx, setShowGlobalAddTx, globalAddTxDefaults, setGlobalAddTxDefaults, budgets } = useFinance();
   
   const [isAddingTx, setIsAddingTx] = useState(false);
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
@@ -50,8 +50,18 @@ export const Journal = () => {
             setTxDebitSearch(`${acc.name} (${acc.type.charAt(0).toUpperCase() + acc.type.slice(1)})`);
           }
         }
+        if (globalAddTxDefaults.creditAccount) {
+          setTxCredit(globalAddTxDefaults.creditAccount);
+          const acc = accounts.find(a => a.id === globalAddTxDefaults.creditAccount);
+          if (acc) {
+            setTxCreditSearch(`${acc.name} (${acc.type.charAt(0).toUpperCase() + acc.type.slice(1)})`);
+          }
+        }
         if (globalAddTxDefaults.tags) {
           setTxTags(globalAddTxDefaults.tags);
+        }
+        if (globalAddTxDefaults.type === 'transfer') {
+          setTxIntent('transfer');
         }
         setGlobalAddTxDefaults(null);
       }
@@ -472,6 +482,23 @@ export const Journal = () => {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
+  const activeBudget = React.useMemo(() => {
+    if (!txTags && !txDesc) return null;
+    const inputTags = [...(txTags ? txTags.split(',').map(t => t.trim().toLowerCase()) : []), ...(txDesc ? txDesc.split(' ').filter(w => w.startsWith('#')).map(w => w.slice(1).toLowerCase()) : [])];
+    
+    for (const budget of budgets) {
+      if (inputTags.includes(budget.tag.toLowerCase())) {
+        const spent = transactions.filter(t => {
+          const d = new Date(t.date);
+          const now = new Date();
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && t.tags && t.tags.includes(budget.tag);
+        }).reduce((sum, t) => sum + t.amount, 0);
+        return { ...budget, spent, remaining: budget.limit - spent };
+      }
+    }
+    return null;
+  }, [txTags, txDesc, budgets, transactions]);
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex justify-between items-center mb-2">
@@ -525,6 +552,15 @@ export const Journal = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 md:gap-6">
+            {activeBudget && (
+              <div className="lg:col-span-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">#{activeBudget.tag} Budget</span>
+                  <span className="text-sm text-slate-700 dark:text-gray-300">Remaining: <strong className={activeBudget.remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}>{formatCurrency(activeBudget.remaining)}</strong></span>
+                </div>
+                <span className="text-xs text-slate-500 dark:text-gray-400">{formatCurrency(activeBudget.spent)} of {formatCurrency(activeBudget.limit)} spent</span>
+              </div>
+            )}
             <div className="lg:col-span-1">
               <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Date</label>
               <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className={inputClasses} required />

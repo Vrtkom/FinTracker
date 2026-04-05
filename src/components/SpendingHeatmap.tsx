@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { startOfYear, endOfYear, eachDayOfInterval, format, parseISO } from 'date-fns';
 
-export const SpendingHeatmap: React.FC = () => {
+export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void }> = ({ onDayClick }) => {
   const { transactions, accounts } = useFinance();
   const [threshold, setThreshold] = useState<number>(() => {
     const saved = localStorage.getItem('spendingHeatmapThreshold');
@@ -202,6 +202,11 @@ export const SpendingHeatmap: React.FC = () => {
                   {week.map((day, dayIndex) => (
                     <div
                       key={dayIndex}
+                      onClick={() => {
+                        if (day.dateStr && onDayClick) {
+                          onDayClick(day.dateStr);
+                        }
+                      }}
                       className={`w-3 h-3 md:w-4 md:h-4 rounded-sm ${day.colorClass} ${day.dateStr ? 'cursor-pointer hover:ring-2 hover:ring-slate-400 dark:hover:ring-gray-500 transition-all' : ''}`}
                       title={day.dateStr ? `${format(day.date, 'MMM d, yyyy')}: ₹${day.amount.toFixed(2)}` : ''}
                     />

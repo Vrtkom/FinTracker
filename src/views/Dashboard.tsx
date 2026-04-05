@@ -5,7 +5,7 @@ import { formatCurrency, getTotals, getAverages, getGamificationStreaks, getAcco
 import { TransactionSlideOver } from '../components/TransactionSlideOver';
 
 export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) => {
-  const { accounts, transactions, recurring, goals, hideBalances, setHideBalances } = useFinance();
+  const { accounts, transactions, recurring, goals, hideBalances, setHideBalances, setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate } = useFinance();
   const [slideOverTxId, setSlideOverTxId] = useState<string | null>(null);
 
   const totals = useMemo(() => getTotals(accounts, transactions), [accounts, transactions]);
@@ -174,34 +174,34 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-        <div className="bg-white dark:bg-gray-900 p-4 md:p-6 rounded-2xl border border-blue-200 dark:border-blue-900/50 flex flex-col gap-1 shadow-sm dark:shadow-blue-900/10">
+        <div className="bg-white dark:bg-gray-900 p-4 md:p-6 rounded-2xl border border-blue-200 dark:border-blue-900/50 flex flex-col gap-1 shadow-sm dark:shadow-blue-900/10 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" onClick={() => switchTab('accounts')}>
           <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
             <Coins className="w-4 h-4 md:w-5 md:h-5" />
             <span className="text-xs md:text-sm font-medium truncate">Liquid Cash</span>
           </div>
-          <p className={`text-lg md:text-2xl font-bold text-slate-900 dark:text-white truncate ${blurClass}`} onClick={toggleHideBalances} title="Click to show/hide balance">{formatCurrency(totals.liquidAssets)}</p>
-          <p className={`text-[10px] md:text-xs text-slate-500 dark:text-gray-400 mt-1 truncate ${blurClass}`} onClick={toggleHideBalances}>≈ {runwayMonths} months runway</p>
+          <p className={`text-lg md:text-2xl font-bold text-slate-900 dark:text-white truncate ${blurClass}`} onClick={(e) => { e.stopPropagation(); toggleHideBalances(); }} title="Click to show/hide balance">{formatCurrency(totals.liquidAssets)}</p>
+          <p className={`text-[10px] md:text-xs text-slate-500 dark:text-gray-400 mt-1 truncate ${blurClass}`} onClick={(e) => { e.stopPropagation(); toggleHideBalances(); }}>≈ {runwayMonths} months runway</p>
         </div>
-        <div className="bg-white dark:bg-gray-900 p-4 md:p-6 rounded-2xl border border-slate-200 dark:border-gray-800 flex flex-col gap-1 md:gap-2 shadow-sm">
+        <div className="bg-white dark:bg-gray-900 p-4 md:p-6 rounded-2xl border border-slate-200 dark:border-gray-800 flex flex-col gap-1 md:gap-2 shadow-sm cursor-pointer hover:border-purple-300 dark:hover:border-purple-700 transition-colors" onClick={() => switchTab('accounts')}>
           <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
             <Lock className="w-4 h-4 md:w-5 md:h-5" />
             <span className="text-xs md:text-sm font-medium truncate">Locked</span>
           </div>
-          <p className={`text-lg md:text-2xl font-bold text-slate-900 dark:text-white truncate ${blurClass}`} onClick={toggleHideBalances} title="Click to show/hide balance">{formatCurrency(totals.lockedAssets)}</p>
+          <p className={`text-lg md:text-2xl font-bold text-slate-900 dark:text-white truncate ${blurClass}`} onClick={(e) => { e.stopPropagation(); toggleHideBalances(); }} title="Click to show/hide balance">{formatCurrency(totals.lockedAssets)}</p>
         </div>
-        <div className="bg-white dark:bg-gray-900 p-4 md:p-6 rounded-2xl border border-slate-200 dark:border-gray-800 flex flex-col gap-1 md:gap-2 shadow-sm">
+        <div className="bg-white dark:bg-gray-900 p-4 md:p-6 rounded-2xl border border-slate-200 dark:border-gray-800 flex flex-col gap-1 md:gap-2 shadow-sm cursor-pointer hover:border-red-300 dark:hover:border-red-700 transition-colors" onClick={() => switchTab('accounts')}>
           <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
             <CreditCard className="w-4 h-4 md:w-5 md:h-5" />
             <span className="text-xs md:text-sm font-medium truncate">Liabilities</span>
           </div>
-          <p className={`text-lg md:text-2xl font-bold text-slate-900 dark:text-white truncate ${blurClass}`} onClick={toggleHideBalances} title="Click to show/hide balance">{formatCurrency(totals.liabilities)}</p>
+          <p className={`text-lg md:text-2xl font-bold text-slate-900 dark:text-white truncate ${blurClass}`} onClick={(e) => { e.stopPropagation(); toggleHideBalances(); }} title="Click to show/hide balance">{formatCurrency(totals.liabilities)}</p>
         </div>
-        <div className="bg-white dark:bg-gray-900 p-4 md:p-6 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 flex flex-col gap-1 md:gap-2 shadow-sm dark:shadow-emerald-900/10">
+        <div className="bg-white dark:bg-gray-900 p-4 md:p-6 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 flex flex-col gap-1 md:gap-2 shadow-sm dark:shadow-emerald-900/10 cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors" onClick={() => switchTab('accounts')}>
           <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
             <Wallet className="w-4 h-4 md:w-5 md:h-5" />
             <span className="text-xs md:text-sm font-medium truncate">Net Worth</span>
           </div>
-          <p className={`text-lg md:text-2xl font-bold text-slate-900 dark:text-white truncate ${blurClass}`} onClick={toggleHideBalances} title="Click to show/hide balance">{formatCurrency(totals.netWorth)}</p>
+          <p className={`text-lg md:text-2xl font-bold text-slate-900 dark:text-white truncate ${blurClass}`} onClick={(e) => { e.stopPropagation(); toggleHideBalances(); }} title="Click to show/hide balance">{formatCurrency(totals.netWorth)}</p>
         </div>
       </div>
 
@@ -317,7 +317,7 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2 md:mt-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm">
+          <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors" onClick={() => switchTab('budgets')}>
             <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1 flex items-center gap-2">
               <LayoutGrid className="w-5 h-5 text-emerald-500" /> Micro-Budgets
             </h3>
@@ -351,7 +351,12 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
           <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm">
             <div className="flex justify-between items-center mb-5">
               <h3 className="text-lg font-bold text-slate-800 dark:text-white">Recent Entries</h3>
-              <button onClick={() => switchTab('transactions')} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View All</button>
+              <button onClick={() => {
+                setJournalFilterAccount('');
+                setJournalFilterSearch('');
+                setJournalFilterDate('all');
+                switchTab('transactions');
+              }} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">View All</button>
             </div>
             <div className="space-y-3">
               {recentTxs.length > 0 ? recentTxs.map(t => {
@@ -434,7 +439,7 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col">
+          <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col cursor-pointer hover:border-purple-300 dark:hover:border-purple-700 transition-colors" onClick={() => switchTab('budgets')}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <Target className="w-5 h-5 text-purple-500" /> Smart Goals

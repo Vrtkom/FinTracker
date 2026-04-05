@@ -94,8 +94,8 @@ const AppContent = () => {
       )}
       
       {activeTab === 'dashboard' && <Dashboard switchTab={setActiveTab} />}
-      {activeTab === 'accounts' && <Accounts />}
-      {activeTab === 'transactions' && <Journal />}
+      {activeTab === 'accounts' && <Accounts switchTab={setActiveTab} />}
+      {activeTab === 'transactions' && <Journal switchTab={setActiveTab} />}
       {activeTab === 'budgets' && <Budgets switchTab={setActiveTab} />}
       {activeTab === 'insights' && <Insights switchTab={setActiveTab} />}
       {activeTab === 'reports' && <Reports />}
