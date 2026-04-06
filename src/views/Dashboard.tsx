@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Coffee, Coins, Lock, CreditCard, Wallet, CalendarDays, Activity, LayoutGrid, Trophy, Repeat, Target, Paperclip, X, Home, Car, Plane, GraduationCap, Heart, PiggyBank, Laptop, Smartphone, Baby, Gift } from 'lucide-react';
+import { Coffee, Coins, Lock, CreditCard, Wallet, CalendarDays, Activity, Trophy, Repeat, Paperclip, X } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getTotals, getAverages, getGamificationStreaks, getAccountBalance } from '../utils/finance';
 import { TransactionSlideOver } from '../components/TransactionSlideOver';
@@ -148,8 +148,6 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
       netChange: dayNetChange
     });
   }
-
-  const microBudgets = accounts.filter(a => a.type === 'expense' && (a.budget || 0) > 0);
 
   return (
     <div className="space-y-6">
@@ -317,37 +315,6 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2 md:mt-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors" onClick={() => switchTab('budgets')}>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1 flex items-center gap-2">
-              <LayoutGrid className="w-5 h-5 text-emerald-500" /> Micro-Budgets
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-gray-400 mb-5">Your strict monthly limits (Envelope system)</p>
-            <div className="bg-slate-50 dark:bg-gray-800/50 p-4 rounded-xl border border-slate-100 dark:border-gray-700/50">
-              {microBudgets.length > 0 ? microBudgets.map(a => {
-                const spent = accSpent[a.id] || 0;
-                const pct = Math.min(100, (spent / (a.budget || 1)) * 100);
-                const isWarning = pct >= 80;
-                const isDanger = pct >= 100;
-                const barColor = isDanger ? 'bg-red-500' : (isWarning ? 'bg-orange-500' : 'bg-blue-500');
-                const textColor = isDanger ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-gray-300';
-                
-                return (
-                  <div key={a.id} className="mb-4 last:mb-0">
-                    <div className="flex justify-between items-end mb-1.5">
-                      <span className={`text-sm font-medium ${textColor}`}>{a.name}</span>
-                      <span className={`text-xs font-bold ${textColor}`}>{formatCurrency(spent)} / {formatCurrency(a.budget || 0)}</span>
-                    </div>
-                    <div className="w-full bg-slate-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
-                      <div className={`${barColor} h-2 rounded-full transition-all duration-500`} style={{width: `${pct}%`}}></div>
-                    </div>
-                    {isWarning && !isDanger && <p className="text-[10px] text-orange-500 mt-1 italic">Approaching limit</p>}
-                    {isDanger && <p className="text-[10px] text-red-500 mt-1 font-bold">Budget exceeded!</p>}
-                  </div>
-                );
-              }) : <p className="text-xs text-slate-400 dark:text-gray-500 italic py-2">No micro-budgets active.</p>}
-            </div>
-          </div>
-      
           <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm">
             <div className="flex justify-between items-center mb-5">
               <h3 className="text-lg font-bold text-slate-800 dark:text-white">Recent Entries</h3>
@@ -436,74 +403,6 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
                   </div>
                 );
               }) : <p className="text-xs text-slate-400 dark:text-gray-500 italic py-2">No recurring templates saved.</p>}
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col cursor-pointer hover:border-purple-300 dark:hover:border-purple-700 transition-colors" onClick={() => switchTab('budgets')}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <Target className="w-5 h-5 text-purple-500" /> Smart Goals
-              </h3>
-            </div>
-            <div className="space-y-3">
-              {goals.length > 0 ? goals.map(g => {
-                const acc = accounts.find(a => a.id === g.linkedAccountId);
-                const bal = acc ? getAccountBalance(acc.id, accounts, transactions) : 0;
-                const pct = Math.min(100, Math.max(0, (bal / g.targetAmount) * 100));
-                const remaining = Math.max(0, g.targetAmount - bal);
-                
-                let projectionText = '';
-                if (remaining === 0) {
-                  projectionText = '<span class="text-emerald-500 font-medium">Goal Reached! 🎉</span>';
-                } else if (avgs.avgSavings > 0) {
-                  const monthsLeft = Math.ceil(remaining / avgs.avgSavings);
-                  projectionText = `Est. completion: ${monthsLeft} month${monthsLeft !== 1 ? 's' : ''}`;
-                } else {
-                  projectionText = 'Savings rate too low to project.';
-                }
-
-                const lowerName = g.name.toLowerCase();
-                let GoalIcon = PiggyBank;
-                if (lowerName.includes('house') || lowerName.includes('home') || lowerName.includes('down payment') || lowerName.includes('mortgage')) GoalIcon = Home;
-                else if (lowerName.includes('car') || lowerName.includes('auto') || lowerName.includes('vehicle')) GoalIcon = Car;
-                else if (lowerName.includes('vacation') || lowerName.includes('trip') || lowerName.includes('travel') || lowerName.includes('flight')) GoalIcon = Plane;
-                else if (lowerName.includes('education') || lowerName.includes('college') || lowerName.includes('school') || lowerName.includes('tuition')) GoalIcon = GraduationCap;
-                else if (lowerName.includes('wedding') || lowerName.includes('health') || lowerName.includes('medical')) GoalIcon = Heart;
-                else if (lowerName.includes('laptop') || lowerName.includes('computer') || lowerName.includes('pc')) GoalIcon = Laptop;
-                else if (lowerName.includes('phone') || lowerName.includes('mobile')) GoalIcon = Smartphone;
-                else if (lowerName.includes('baby') || lowerName.includes('child')) GoalIcon = Baby;
-                else if (lowerName.includes('gift') || lowerName.includes('present')) GoalIcon = Gift;
-
-                return (
-                  <div key={g.id} className="bg-slate-50 dark:bg-gray-800/50 p-4 rounded-xl border border-slate-100 dark:border-gray-700/50">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="relative w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-900 rounded-full shadow-sm border border-slate-200 dark:border-gray-700">
-                          <GoalIcon className="w-5 h-5 text-slate-300 dark:text-gray-600 absolute" />
-                          <div 
-                            className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-full"
-                            style={{ clipPath: `inset(${100 - pct}% 0 0 0)` }}
-                          >
-                            <GoalIcon className="w-5 h-5 text-purple-500" />
-                          </div>
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-800 dark:text-gray-200 text-sm">{g.name}</p>
-                          <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5">Linked: {acc ? acc.name : 'Unknown'}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-purple-600 dark:text-purple-400 text-sm">{formatCurrency(bal)}</p>
-                        <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5">of {formatCurrency(g.targetAmount)}</p>
-                      </div>
-                    </div>
-                    <div className="w-full bg-slate-200 dark:bg-gray-700 rounded-full h-1.5 mt-3 overflow-hidden">
-                      <div className="bg-purple-500 h-1.5 rounded-full transition-all duration-500" style={{width: `${pct}%`}}></div>
-                    </div>
-                    <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-2 italic" dangerouslySetInnerHTML={{__html: projectionText}}></p>
-                  </div>
-                );
-              }) : <div className="text-slate-400 dark:text-gray-500 text-xs italic p-4 text-center border border-dashed border-slate-200 dark:border-gray-700 rounded-xl">No active goals. Add one in Accounts.</div>}
             </div>
           </div>
         </div>

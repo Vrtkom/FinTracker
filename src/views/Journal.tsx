@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, ArrowUpDown, ArrowLeftRight, Camera, CheckCircle, ShieldCheck, Paperclip, CheckCircle2, Copy, Trash2, Download } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, ArrowLeftRight, Camera, CheckCircle, ShieldCheck, Paperclip, CheckCircle2, Copy, Trash2, Download, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
@@ -483,21 +483,27 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
   const todayStr = new Date().toISOString().split('T')[0];
 
   const activeBudget = React.useMemo(() => {
-    if (!txTags && !txDesc) return null;
     const inputTags = [...(txTags ? txTags.split(',').map(t => t.trim().toLowerCase()) : []), ...(txDesc ? txDesc.split(' ').filter(w => w.startsWith('#')).map(w => w.slice(1).toLowerCase()) : [])];
     
     for (const budget of budgets) {
-      if (inputTags.includes(budget.tag.toLowerCase())) {
+      if (budget.tag && inputTags.includes(budget.tag.toLowerCase())) {
         const spent = transactions.filter(t => {
           const d = new Date(t.date);
           const now = new Date();
-          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && t.tags && t.tags.includes(budget.tag);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && t.tags && t.tags.includes(budget.tag!);
+        }).reduce((sum, t) => sum + t.amount, 0);
+        return { ...budget, spent, remaining: budget.limit - spent };
+      } else if (budget.accountId && (txDebit === budget.accountId || txCredit === budget.accountId)) {
+        const spent = transactions.filter(t => {
+          const d = new Date(t.date);
+          const now = new Date();
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && (t.debitAccount === budget.accountId || t.creditAccount === budget.accountId);
         }).reduce((sum, t) => sum + t.amount, 0);
         return { ...budget, spent, remaining: budget.limit - spent };
       }
     }
     return null;
-  }, [txTags, txDesc, budgets, transactions]);
+  }, [txTags, txDesc, txDebit, txCredit, budgets, transactions]);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -555,7 +561,9 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
             {activeBudget && (
               <div className="lg:col-span-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">#{activeBudget.tag} Budget</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">
+                    {activeBudget.accountId ? `${accounts.find(a => a.id === activeBudget.accountId)?.name || 'Account'} Budget` : `#${activeBudget.tag} Budget`}
+                  </span>
                   <span className="text-sm text-slate-700 dark:text-gray-300">Remaining: <strong className={activeBudget.remaining < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}>{formatCurrency(activeBudget.remaining)}</strong></span>
                 </div>
                 <span className="text-xs text-slate-500 dark:text-gray-400">{formatCurrency(activeBudget.spent)} of {formatCurrency(activeBudget.limit)} spent</span>
@@ -768,7 +776,22 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
             </tr>
           </thead>
           <tbody>
-            {filteredTxs.slice().reverse().map(t => {
+            {filteredTxs.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="p-12 text-center">
+                  <div className="w-16 h-16 bg-slate-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <BookOpen className="w-8 h-8 text-slate-400 dark:text-gray-500" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No Transactions Found</h3>
+                  <p className="text-slate-500 dark:text-gray-400 text-sm max-w-md mx-auto">
+                    {transactions.length === 0 
+                      ? "You haven't added any transactions yet. Click 'New Entry' to get started." 
+                      : "No entries match your current filters. Try clearing the search or changing the date range."}
+                  </p>
+                </td>
+              </tr>
+            ) : (
+              filteredTxs.slice().reverse().map(t => {
               const drAcc = accounts.find(a => a.id === t.debitAccount)?.name || 'Archived/Deleted';
               const crAcc = accounts.find(a => a.id === t.creditAccount)?.name || 'Archived/Deleted';
               const isFuture = t.date > todayStr;
@@ -806,14 +829,24 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
                   </td>
                 </tr>
               );
-            })}
+            }))}
           </tbody>
         </table>
       </div>
 
       <div className="md:hidden block">
         {filteredTxs.length === 0 ? (
-          <div className="bg-white dark:bg-gray-900 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm p-10 text-center text-slate-500 dark:text-gray-500 text-sm">No entries match your filters.</div>
+          <div className="bg-white dark:bg-gray-900 rounded-3xl border border-dashed border-slate-200 dark:border-gray-800 shadow-sm p-10 text-center">
+            <div className="w-12 h-12 bg-slate-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+              <BookOpen className="w-6 h-6 text-slate-400 dark:text-gray-500" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1">No Transactions</h3>
+            <p className="text-slate-500 dark:text-gray-400 text-xs">
+              {transactions.length === 0 
+                ? "Click 'New Entry' to get started." 
+                : "No entries match your filters."}
+            </p>
+          </div>
         ) : (
           filteredTxs.slice().reverse().map(t => {
             const drAcc = accounts.find(a => a.id === t.debitAccount)?.name || 'Archived/Deleted';

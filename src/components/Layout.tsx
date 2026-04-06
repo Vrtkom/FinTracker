@@ -6,20 +6,21 @@ import {
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { getTotals } from '../utils/finance';
+import { toast } from 'sonner';
 
 const tabs = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', short: 'Home' },
-  { id: 'accounts', icon: Wallet, label: 'Accounts', short: 'Accounts' },
-  { id: 'transactions', icon: BookOpen, label: 'Journal Entries', short: 'Journal' },
-  { id: 'budgets', icon: Target, label: 'Budgets & Goals', short: 'Budgets' },
-  { id: 'insights', icon: Activity, label: 'Insights', short: 'Insights' },
-  { id: 'reports', icon: PieChart, label: 'Statements & Reports', short: 'Reports' },
+  { id: 'accounts', icon: Landmark, label: 'Accounts', short: 'Accounts' },
+  { id: 'transactions', icon: BookOpen, label: 'Journal', short: 'Journal' },
+  { id: 'budgets', icon: Target, label: 'Planning', short: 'Planning' },
+  { id: 'analytics', icon: Activity, label: 'Analytics', short: 'Analytics' },
 ];
 
 export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTheme }: { children: React.ReactNode, activeTab: string, setActiveTab: (t: string) => void, isDarkMode: boolean, toggleTheme: () => void }) => {
   const { 
     user, logoutUser,
     hideBalances, setHideBalances, 
+    advancedMode, setAdvancedMode,
     setShowManageRecurringModal, 
     accounts, transactions, 
     setAccounts, setTransactions, setRecurring, setGoals,
@@ -29,6 +30,8 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
   } = useFinance();
   
   const [hasImbalance, setHasImbalance] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearConfirmText, setClearConfirmText] = useState('');
 
   useEffect(() => {
     const totals = getTotals(accounts, transactions);
@@ -39,6 +42,11 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
   const toggleHideBalances = () => {
     setHideBalances(!hideBalances);
     localStorage.setItem('fintrack_hide_balances', String(!hideBalances));
+  };
+
+  const toggleAdvancedMode = () => {
+    setAdvancedMode(!advancedMode);
+    localStorage.setItem('fintrack_advanced_mode', String(!advancedMode));
   };
 
   const exportData = () => {
@@ -111,11 +119,17 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
   };
 
   const handleClearData = () => {
-    if (window.confirm("DANGER ZONE\n\nAre you absolutely sure you want to clear all data? This cannot be undone unless you have a backup file.")) {
-      if (window.confirm("Last chance. Type 'YES' to delete all data.")) {
-        clearAllData();
-        alert("All data wiped clean.");
-      }
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearData = () => {
+    if (clearConfirmText === 'DELETE') {
+      clearAllData();
+      setShowClearConfirm(false);
+      setClearConfirmText('');
+      toast.success("All data wiped clean.");
+    } else {
+      toast.error("Please type DELETE to confirm.");
     }
   };
 
@@ -217,6 +231,14 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
           
           <p className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3 mt-6">Account</p>
           <div className="space-y-2">
+            <button onClick={toggleAdvancedMode} className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800 rounded-xl transition-colors mb-2">
+              <div className="flex items-center gap-3">
+                <Activity className="w-4 h-4" /> Advanced Mode
+              </div>
+              <div className={`w-8 h-4 rounded-full transition-colors flex items-center px-0.5 ${advancedMode ? 'bg-blue-500' : 'bg-slate-300 dark:bg-gray-600'}`}>
+                <div className={`w-3 h-3 rounded-full bg-white transition-transform ${advancedMode ? 'translate-x-4' : 'translate-x-0'}`} />
+              </div>
+            </button>
             <button onClick={() => setShowManageRecurringModal(true)} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/30 rounded-xl transition-colors mb-2">
               <Repeat className="w-4 h-4" /> Manage Recurring
             </button>
@@ -277,6 +299,49 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
           </button>
         ))}
       </nav>
+
+      {/* Clear Data Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-gray-800">
+            <div className="flex items-center gap-3 mb-4 text-red-600 dark:text-red-500">
+              <AlertTriangle className="w-8 h-8" />
+              <h3 className="text-xl font-bold">DANGER ZONE</h3>
+            </div>
+            <p className="text-slate-600 dark:text-gray-300 mb-4">
+              Are you absolutely sure you want to clear all data? This cannot be undone unless you have a backup file.
+            </p>
+            <p className="text-slate-600 dark:text-gray-300 mb-4 font-medium">
+              Type <strong className="text-red-600 dark:text-red-500">DELETE</strong> below to confirm:
+            </p>
+            <input 
+              type="text" 
+              value={clearConfirmText}
+              onChange={(e) => setClearConfirmText(e.target.value)}
+              placeholder="DELETE"
+              className="w-full p-3 mb-6 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-red-500 rounded-xl outline-none transition-all text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+            />
+            <div className="flex gap-3 justify-end">
+              <button 
+                onClick={() => {
+                  setShowClearConfirm(false);
+                  setClearConfirmText('');
+                }} 
+                className="px-5 py-2.5 rounded-xl font-medium text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmClearData} 
+                disabled={clearConfirmText !== 'DELETE'}
+                className={`px-5 py-2.5 rounded-xl font-bold text-white transition-colors ${clearConfirmText === 'DELETE' ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/20' : 'bg-red-300 dark:bg-red-900/50 cursor-not-allowed'}`}
+              >
+                Wipe All Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

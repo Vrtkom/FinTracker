@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutGrid, Edit2, RefreshCw, Trash2, Target, Plus, Save, Home, Car, Plane, GraduationCap, Heart, PiggyBank, Laptop, Smartphone, Baby, Gift, CreditCard, ArrowRight } from 'lucide-react';
+import { LayoutGrid, Edit2, RefreshCw, Trash2, Target, Plus, Save, Home, Car, Plane, GraduationCap, Heart, PiggyBank, Laptop, Smartphone, Baby, Gift, CreditCard, ArrowRight, Wallet } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
 import { AccountType, Liquidity } from '../types';
 
 export const Accounts = ({ switchTab }: { switchTab?: (tab: string) => void }) => {
-  const { accounts, setAccounts, transactions, setManagingPotsFor, setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate, setGlobalAddTxDefaults, goals } = useFinance();
+  const { accounts, setAccounts, transactions, setManagingPotsFor, setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate, setGlobalAddTxDefaults, goals, advancedMode, showGlobalAddAccount, setShowGlobalAddAccount } = useFinance();
   
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [newAccName, setNewAccName] = useState('');
@@ -15,6 +15,14 @@ export const Accounts = ({ switchTab }: { switchTab?: (tab: string) => void }) =
   const [newAccExcludeForecast, setNewAccExcludeForecast] = useState(false);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showGlobalAddAccount) {
+      setEditingAccountId(null);
+      nameInputRef.current?.focus();
+      setShowGlobalAddAccount(false);
+    }
+  }, [showGlobalAddAccount, setShowGlobalAddAccount]);
 
   const editAcc = editingAccountId ? accounts.find(a => a.id === editingAccountId) : null;
   const formTitle = editAcc ? 'Edit Account' : 'New Account Name';
@@ -35,6 +43,8 @@ export const Accounts = ({ switchTab }: { switchTab?: (tab: string) => void }) =
       setNewAccExcludeForecast(false);
     }
   }, [editAcc]);
+
+  const [confirmModal, setConfirmModal] = useState<{ type: 'archive' | 'hardDelete', id: string } | null>(null);
 
   const saveAccount = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,9 +81,7 @@ export const Accounts = ({ switchTab }: { switchTab?: (tab: string) => void }) =
   const deleteAccount = (id: string) => {
     const isUsed = transactions.some(t => t.debitAccount === id || t.creditAccount === id);
     if (isUsed) {
-      if (window.confirm("Cannot hard-delete: Account has entries.\nArchive it instead?")) {
-        setAccounts(accounts.map(a => a.id === id ? { ...a, isArchived: true } : a));
-      }
+      setConfirmModal({ type: 'archive', id });
       return;
     }
     setAccounts(accounts.filter(a => a.id !== id));
@@ -81,6 +89,10 @@ export const Accounts = ({ switchTab }: { switchTab?: (tab: string) => void }) =
 
   const unarchiveAccount = (id: string) => {
     setAccounts(accounts.map(a => a.id === id ? { ...a, isArchived: false } : a));
+  };
+
+  const hardDeleteAccount = (id: string) => {
+    setConfirmModal({ type: 'hardDelete', id });
   };
 
   const inputClasses = "w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-xl outline-none transition-all text-sm md:text-base dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500";
@@ -146,9 +158,16 @@ export const Accounts = ({ switchTab }: { switchTab?: (tab: string) => void }) =
                     <Edit2 className="w-4 h-4" />
                   </button>
                   {acc.isArchived ? (
-                    <button onClick={(e) => { e.stopPropagation(); unarchiveAccount(acc.id); }} title="Unarchive" className="text-slate-400 hover:text-emerald-500 dark:text-gray-500 dark:hover:text-emerald-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg transition-all">
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
+                    <>
+                      <button onClick={(e) => { e.stopPropagation(); unarchiveAccount(acc.id); }} title="Unarchive" className="text-slate-400 hover:text-emerald-500 dark:text-gray-500 dark:hover:text-emerald-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg transition-all">
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                      {bal === 0 && (
+                        <button onClick={(e) => { e.stopPropagation(); hardDeleteAccount(acc.id); }} title="Permanently Delete" className="text-slate-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg transition-all">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <button onClick={(e) => { e.stopPropagation(); deleteAccount(acc.id); }} title="Delete/Archive" className="text-slate-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 bg-white dark:bg-gray-800 border border-slate-200 dark:border-transparent p-1.5 md:p-2 rounded-lg opacity-100 md:opacity-0 group-hover:opacity-100 transition-all">
                       <Trash2 className="w-4 h-4" />
@@ -172,7 +191,15 @@ export const Accounts = ({ switchTab }: { switchTab?: (tab: string) => void }) =
                 </>
               )}
             </div>
-          )}) : <p className="text-xs md:text-sm text-slate-400 dark:text-gray-500 italic p-3 md:p-4 border border-dashed border-slate-200 dark:border-gray-700 rounded-xl text-center">No accounts</p>}
+          )}) : (
+            <div className="p-6 border border-dashed border-slate-200 dark:border-gray-700 rounded-2xl text-center">
+              <div className="w-12 h-12 bg-slate-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Wallet className="w-6 h-6 text-slate-400 dark:text-gray-500" />
+              </div>
+              <p className="text-sm font-medium text-slate-600 dark:text-gray-300 mb-1">No {title.split(' ')[0]} yet</p>
+              <p className="text-xs text-slate-400 dark:text-gray-500">Add an account above to get started.</p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -191,8 +218,8 @@ export const Accounts = ({ switchTab }: { switchTab?: (tab: string) => void }) =
           <select value={newAccType} onChange={e => setNewAccType(e.target.value as AccountType)} className={inputClasses}>
             <option value="asset">Asset (Bank/Cash)</option>
             <option value="liability">Liability (Card/Loan)</option>
-            <option value="equity">Equity (Capital)</option>
-            <option value="income">Income (Salary)</option>
+            {advancedMode && <option value="equity">Equity (Capital)</option>}
+            {advancedMode && <option value="income">Income (Salary)</option>}
             <option value="expense">Expense (Food/Rent)</option>
           </select>
         </div>
@@ -227,13 +254,49 @@ export const Accounts = ({ switchTab }: { switchTab?: (tab: string) => void }) =
         </div>
       </form>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {renderGroup('asset', 'Assets (Dr)', 'text-blue-600 dark:text-blue-400')}
         {renderGroup('liability', 'Liabilities (Cr)', 'text-red-600 dark:text-red-400')}
-        {renderGroup('equity', 'Equity (Cr)', 'text-purple-600 dark:text-purple-400')}
-        {renderGroup('income', 'Income (Cr)', 'text-emerald-600 dark:text-emerald-400')}
+        {advancedMode && renderGroup('equity', 'Equity (Cr)', 'text-purple-600 dark:text-purple-400')}
+        {advancedMode && renderGroup('income', 'Income (Cr)', 'text-emerald-600 dark:text-emerald-400')}
         {renderGroup('expense', 'Expenses (Dr)', 'text-orange-600 dark:text-orange-400')}
       </div>
+
+      {confirmModal && (
+        <div className="fixed inset-0 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl border border-slate-200 dark:border-gray-800">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
+              {confirmModal.type === 'archive' ? 'Account In Use' : 'Permanently Delete Account?'}
+            </h3>
+            <p className="text-slate-600 dark:text-gray-300 mb-6">
+              {confirmModal.type === 'archive' 
+                ? "This account has existing transactions and cannot be hard-deleted. Would you like to archive it instead? Archived accounts are hidden from main views but preserve your transaction history."
+                : "Are you sure you want to permanently delete this account? Any past transactions linked to it will show 'Archived/Deleted' as the account name. This action cannot be undone."}
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button 
+                onClick={() => setConfirmModal(null)} 
+                className="px-5 py-2.5 rounded-xl font-medium text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  if (confirmModal.type === 'archive') {
+                    setAccounts(accounts.map(a => a.id === confirmModal.id ? { ...a, isArchived: true } : a));
+                  } else {
+                    setAccounts(accounts.filter(a => a.id !== confirmModal.id));
+                  }
+                  setConfirmModal(null);
+                }} 
+                className={`px-5 py-2.5 rounded-xl font-bold text-white transition-colors shadow-lg ${confirmModal.type === 'archive' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20' : 'bg-red-600 hover:bg-red-700 shadow-red-500/20'}`}
+              >
+                {confirmModal.type === 'archive' ? 'Archive Account' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

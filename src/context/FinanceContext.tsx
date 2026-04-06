@@ -13,6 +13,8 @@ interface FinanceContextType {
   setIsUnlocked: (val: boolean) => void;
   hideBalances: boolean;
   setHideBalances: (val: boolean) => void;
+  advancedMode: boolean;
+  setAdvancedMode: (val: boolean) => void;
   accounts: Account[];
   setAccounts: (accs: Account[]) => Promise<void>;
   transactions: Transaction[];
@@ -48,6 +50,9 @@ interface FinanceContextType {
   showGlobalAddTx: boolean;
   setShowGlobalAddTx: (val: boolean) => void;
   
+  showGlobalAddAccount: boolean;
+  setShowGlobalAddAccount: (val: boolean) => void;
+  
   globalAddTxDefaults: { tags?: string, debitAccount?: string } | null;
   setGlobalAddTxDefaults: (val: { tags?: string, debitAccount?: string, creditAccount?: string, type?: 'income' | 'expense' | 'transfer' } | null) => void;
   
@@ -78,6 +83,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   
   const [isUnlocked, setIsUnlocked] = useState(true); // Default to true, rely on Firebase Auth
   const [hideBalances, setHideBalances] = useState(localStorage.getItem('fintrack_hide_balances') !== 'false');
+  const [advancedMode, setAdvancedMode] = useState(localStorage.getItem('fintrack_advanced_mode') === 'true');
   
   const [accounts, setAccountsState] = useState<Account[]>([]);
   const [transactions, setTransactionsState] = useState<Transaction[]>([]);
@@ -94,6 +100,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const [journalFilterSearch, setJournalFilterSearch] = useState<string>('');
   const [journalFilterDate, setJournalFilterDate] = useState<string>('all');
   const [showGlobalAddTx, setShowGlobalAddTx] = useState<boolean>(false);
+  const [showGlobalAddAccount, setShowGlobalAddAccount] = useState<boolean>(false);
   const [globalAddTxDefaults, setGlobalAddTxDefaults] = useState<{ tags?: string, debitAccount?: string, creditAccount?: string, type?: 'income' | 'expense' | 'transfer' } | null>(null);
   const [customReport, setCustomReport] = useState<CustomReport>(defaultReport);
   const [activityStreak, setActivityStreak] = useState<number>(0);
@@ -352,6 +359,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       user, login, logoutUser,
       isUnlocked, setIsUnlocked,
       hideBalances, setHideBalances,
+      advancedMode, setAdvancedMode,
       accounts, setAccounts,
       transactions, setTransactions,
       recurring, setRecurring,
@@ -366,6 +374,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       journalFilterSearch, setJournalFilterSearch,
       journalFilterDate, setJournalFilterDate,
       showGlobalAddTx, setShowGlobalAddTx,
+      showGlobalAddAccount, setShowGlobalAddAccount,
       globalAddTxDefaults, setGlobalAddTxDefaults,
       customReport, setCustomReport,
       activityStreak,

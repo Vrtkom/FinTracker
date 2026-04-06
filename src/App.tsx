@@ -10,9 +10,9 @@ import { PinLock } from './components/PinLock';
 import { Dashboard } from './views/Dashboard';
 import { Accounts } from './views/Accounts';
 import { Journal } from './views/Journal';
-import { Reports } from './views/Reports';
+import { Analytics } from './views/Analytics';
 import { Budgets } from './views/Budgets';
-import { Insights } from './views/Insights';
+import { QuickAddButton } from './components/QuickAddButton';
 import { RecurringModal } from './components/Modals/RecurringModal';
 import { ManageRecurringModal } from './components/Modals/ManageRecurringModal';
 import { VirtualPotsModal } from './components/Modals/VirtualPotsModal';
@@ -28,6 +28,7 @@ const AppContent = () => {
     return saved ? saved === 'dark' : true;
   });
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
+  const [showDismissConfirm, setShowDismissConfirm] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -44,11 +45,14 @@ const AppContent = () => {
   };
 
   const handleDismissMigration = () => {
-    if (window.confirm("Are you sure? Your local data will remain on this device but won't be synced to the cloud. You can clear it later in Data Management.")) {
-      setShowMigrationPrompt(false);
-      // Set a flag to prevent prompting again instead of deleting data
-      localStorage.setItem('fintrack_migration_dismissed', 'true');
-    }
+    setShowDismissConfirm(true);
+  };
+
+  const confirmDismissMigration = () => {
+    setShowMigrationPrompt(false);
+    setShowDismissConfirm(false);
+    // Set a flag to prevent prompting again instead of deleting data
+    localStorage.setItem('fintrack_migration_dismissed', 'true');
   };
 
   useEffect(() => {
@@ -97,25 +101,40 @@ const AppContent = () => {
       {activeTab === 'accounts' && <Accounts switchTab={setActiveTab} />}
       {activeTab === 'transactions' && <Journal switchTab={setActiveTab} />}
       {activeTab === 'budgets' && <Budgets switchTab={setActiveTab} />}
-      {activeTab === 'insights' && <Insights switchTab={setActiveTab} />}
-      {activeTab === 'reports' && <Reports />}
+      {activeTab === 'analytics' && <Analytics switchTab={setActiveTab} />}
       
       <RecurringModal />
       <ManageRecurringModal />
       <VirtualPotsModal />
       <ReceiptModal />
 
-      {/* Global Quick Add FAB */}
-      <button
-        onClick={() => {
-          setActiveTab('transactions');
-          setShowGlobalAddTx(true);
-        }}
-        className="fixed bottom-20 right-6 md:bottom-8 md:right-8 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all z-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        aria-label="Add Transaction"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
+      <QuickAddButton switchTab={setActiveTab} />
+
+      {/* Dismiss Migration Confirmation Modal */}
+      {showDismissConfirm && (
+        <div className="fixed inset-0 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-gray-800">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Dismiss Migration?</h3>
+            <p className="text-slate-600 dark:text-gray-300 mb-6">
+              Are you sure? Your local data will remain on this device but won't be synced to the cloud. You can clear it later in Data Management.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button 
+                onClick={() => setShowDismissConfirm(false)} 
+                className="px-5 py-2.5 rounded-xl font-medium text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDismissMigration} 
+                className="px-5 py-2.5 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

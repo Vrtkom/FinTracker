@@ -59,7 +59,8 @@ export interface Goal {
 
 export interface Budget {
   id: string;
-  tag: string;
+  tag?: string;
+  accountId?: string;
   limit: number;
   period: 'monthly';
 }

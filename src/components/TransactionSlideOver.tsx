@@ -13,6 +13,7 @@ interface TransactionSlideOverProps {
 export const TransactionSlideOver: React.FC<TransactionSlideOverProps> = ({ isOpen, onClose, transactionId }) => {
   const { transactions, setTransactions, accounts } = useFinance();
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Edit form state
   const [txDate, setTxDate] = useState('');
@@ -70,11 +71,15 @@ export const TransactionSlideOver: React.FC<TransactionSlideOverProps> = ({ isOp
 
   const handleDelete = () => {
     if (!transaction) return;
-    if (window.confirm('Are you sure you want to delete this transaction?')) {
-      setTransactions(transactions.filter(t => t.id !== transaction.id));
-      onClose();
-      toast.success('Transaction deleted');
-    }
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    if (!transaction) return;
+    setTransactions(transactions.filter(t => t.id !== transaction.id));
+    setShowDeleteConfirm(false);
+    onClose();
+    toast.success('Transaction deleted');
   };
 
   const inputClasses = "w-full p-3 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-xl outline-none transition-all text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white";
@@ -233,6 +238,32 @@ export const TransactionSlideOver: React.FC<TransactionSlideOverProps> = ({ isOp
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-gray-800">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Delete Transaction?</h3>
+            <p className="text-slate-600 dark:text-gray-300 mb-6">
+              Are you sure you want to delete this transaction? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button 
+                onClick={() => setShowDeleteConfirm(false)} 
+                className="px-5 py-2.5 rounded-xl font-medium text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete} 
+                className="px-5 py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/20 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
