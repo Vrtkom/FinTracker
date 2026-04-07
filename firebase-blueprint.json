@@ -75,6 +75,23 @@
         "uid": { "type": "string" }
       },
       "required": ["id", "tag", "limit", "period", "uid"]
+    },
+    "TransactionTemplate": {
+      "title": "TransactionTemplate",
+      "description": "A template for quick-add transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "debitAccount": { "type": "string" },
+        "creditAccount": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "merchant": { "type": "string" },
+        "uid": { "type": "string" }
+      },
+      "required": ["id", "name", "description", "amount", "debitAccount", "creditAccount", "uid"]
     }
   },
   "firestore": {
@@ -97,6 +114,10 @@
     "/users/{userId}/budgets/{budgetId}": {
       "schema": { "$ref": "#/entities/Budget" },
       "description": "User's tag-based budgets"
+    },
+    "/users/{userId}/templates/{templateId}": {
+      "schema": { "$ref": "#/entities/TransactionTemplate" },
+      "description": "User's quick-add transaction templates"
     }
   }
 }

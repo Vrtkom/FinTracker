@@ -41,6 +41,18 @@ export interface Transaction {
   groupId?: string;
   intent?: TransactionIntent; // Need vs Want classification
   splits?: Split[]; // Splitwise-style bill splitting
+  merchant?: string;
+}
+
+export interface TransactionTemplate {
+  id: string;
+  name: string;
+  description: string;
+  amount: number;
+  debitAccount: string;
+  creditAccount: string;
+  tags?: string[];
+  merchant?: string;
 }
 
 export interface Recurring {

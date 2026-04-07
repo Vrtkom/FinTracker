@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, ArrowUpDown, ArrowLeftRight, Camera, CheckCircle, ShieldCheck, Paperclip, CheckCircle2, Copy, Trash2, Download, BookOpen } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, ArrowLeftRight, Camera, CheckCircle, ShieldCheck, Paperclip, CheckCircle2, Copy, Trash2, Download, BookOpen, Edit2, CheckSquare, Square, Tag, Zap, X, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
 import { parseNaturalLanguageTransaction, parseReceipt } from '../services/geminiService';
 
 export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) => {
-  const { accounts, transactions, setTransactions, recurring, setRecurring, setViewingReceipt, journalFilterAccount, setJournalFilterAccount, journalFilterSearch, setJournalFilterSearch, journalFilterDate, setJournalFilterDate, showGlobalAddTx, setShowGlobalAddTx, globalAddTxDefaults, setGlobalAddTxDefaults, budgets } = useFinance();
+  const { accounts, transactions, setTransactions, recurring, setRecurring, setViewingReceipt, journalFilterAccount, setJournalFilterAccount, journalFilterSearch, setJournalFilterSearch, journalFilterDate, setJournalFilterDate, showGlobalAddTx, setShowGlobalAddTx, globalAddTxDefaults, setGlobalAddTxDefaults, budgets, templates, setTemplates } = useFinance();
   
   const [isAddingTx, setIsAddingTx] = useState(false);
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
@@ -20,6 +20,7 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
   const [txCleared, setTxCleared] = useState(true);
   const [txReceiptBase64, setTxReceiptBase64] = useState<string | null>(null);
   const [txTags, setTxTags] = useState('');
+  const [txMerchant, setTxMerchant] = useState('');
   const [txIntent, setTxIntent] = useState<'need' | 'want' | 'investment' | 'transfer' | undefined>(undefined);
   
   const [magicInput, setMagicInput] = useState('');
@@ -32,6 +33,19 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
 
   const [showDebitOptions, setShowDebitOptions] = useState(false);
   const [showCreditOptions, setShowCreditOptions] = useState(false);
+
+  // Bulk Edit State
+  const [selectedTxs, setSelectedTxs] = useState<Set<string>>(new Set());
+  const [isBulkEditing, setIsBulkEditing] = useState(false);
+  const [bulkDebit, setBulkDebit] = useState('');
+  const [bulkCredit, setBulkCredit] = useState('');
+  const [bulkTags, setBulkTags] = useState('');
+
+  // Inline Edit State
+  const [editingTxId, setEditingTxId] = useState<string | null>(null);
+  const [editTxDate, setEditTxDate] = useState('');
+  const [editTxDesc, setEditTxDesc] = useState('');
+  const [editTxAmount, setEditTxAmount] = useState('');
 
   const debitRef = useRef<HTMLDivElement>(null);
   const creditRef = useRef<HTMLDivElement>(null);
@@ -285,7 +299,8 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
           creditAccount: splitType === 'out' ? splitMainAccount : split.accountId,
           cleared: txCleared,
           receipt: txReceiptBase64,
-          tags: txTags.split(',').map(t => t.trim()).filter(Boolean)
+          tags: txTags.split(',').map(t => t.trim()).filter(Boolean),
+          merchant: txMerchant.trim() || undefined
         };
       });
       
@@ -319,7 +334,8 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
         cleared: txCleared,
         receipt: txReceiptBase64,
         tags: txTags.split(',').map(t => t.trim()).filter(Boolean),
-        intent: txIntent
+        intent: txIntent,
+        merchant: txMerchant.trim() || undefined
       };
       
       if (txRecurring) {
@@ -344,10 +360,49 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
     setTxCleared(true);
     setTxReceiptBase64(null);
     setTxTags('');
+    setTxMerchant('');
     setTxIntent(undefined);
     setIsSplitMode(false);
     setSplitMainAccount('');
     setSplits([{ accountId: '', amount: '', description: '' }, { accountId: '', amount: '', description: '' }]);
+  };
+
+  const applyTemplate = (template: any) => {
+    setIsAddingTx(true);
+    setTxDesc(template.description);
+    setTxAmount(template.amount.toString());
+    setTxDebit(template.debitAccount);
+    setTxCredit(template.creditAccount);
+    
+    const drAcc = accounts.find(a => a.id === template.debitAccount);
+    if (drAcc) setTxDebitSearch(`${drAcc.name} (${drAcc.type})`);
+    
+    const crAcc = accounts.find(a => a.id === template.creditAccount);
+    if (crAcc) setTxCreditSearch(`${crAcc.name} (${crAcc.type})`);
+    
+    if (template.tags) setTxTags(template.tags.join(', '));
+    if (template.merchant) setTxMerchant(template.merchant);
+    
+    window.scrollTo(0, 0);
+  };
+
+  const saveAsTemplate = () => {
+    if (!txDesc || !txAmount || !txDebit || !txCredit) {
+      toast.error('Please fill out the transaction details to save as a template.');
+      return;
+    }
+    const newTemplate = {
+      id: Date.now().toString(),
+      name: txDesc,
+      description: txDesc,
+      amount: parseFloat(txAmount),
+      debitAccount: txDebit,
+      creditAccount: txCredit,
+      tags: txTags.split(',').map(t => t.trim()).filter(Boolean),
+      merchant: txMerchant
+    };
+    setTemplates([...templates, newTemplate]);
+    toast.success('Template saved!');
   };
 
   const duplicateTransaction = (id: string) => {
@@ -373,6 +428,12 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
     if (tx.tags) {
       setTxTags(tx.tags.join(', '));
     }
+    if (tx.merchant) {
+      setTxMerchant(tx.merchant);
+    }
+    if (tx.intent) {
+      setTxIntent(tx.intent);
+    }
     
     window.scrollTo(0, 0);
   };
@@ -397,6 +458,55 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
 
   const toggleCleared = (id: string) => {
     setTransactions(transactions.map(t => t.id === id ? { ...t, cleared: !t.cleared } : t));
+  };
+
+  const handleBulkAction = () => {
+    if (selectedTxs.size === 0) return;
+    
+    let updatedTxs = [...transactions];
+    
+    updatedTxs = updatedTxs.map(t => {
+      if (selectedTxs.has(t.id)) {
+        const updates: any = {};
+        if (bulkDebit) updates.debitAccount = bulkDebit;
+        if (bulkCredit) updates.creditAccount = bulkCredit;
+        if (bulkTags) {
+          const newTags = bulkTags.split(',').map(tag => tag.trim()).filter(Boolean);
+          updates.tags = t.tags ? [...new Set([...t.tags, ...newTags])] : newTags;
+        }
+        return { ...t, ...updates };
+      }
+      return t;
+    });
+    
+    setTransactions(updatedTxs);
+    setSelectedTxs(new Set());
+    setIsBulkEditing(false);
+    setBulkDebit('');
+    setBulkCredit('');
+    setBulkTags('');
+    toast.success(`Updated ${selectedTxs.size} transactions`);
+  };
+
+  const deleteSelected = () => {
+    if (selectedTxs.size === 0) return;
+    if (window.confirm(`Are you sure you want to delete ${selectedTxs.size} transactions?`)) {
+      setTransactions(transactions.filter(t => !selectedTxs.has(t.id)));
+      setSelectedTxs(new Set());
+      setIsBulkEditing(false);
+      toast.success(`Deleted ${selectedTxs.size} transactions`);
+    }
+  };
+
+  const saveInlineEdit = (id: string) => {
+    const amount = parseFloat(editTxAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Invalid amount');
+      return;
+    }
+    setTransactions(transactions.map(t => t.id === id ? { ...t, date: editTxDate, description: editTxDesc, amount } : t));
+    setEditingTxId(null);
+    toast.success('Transaction updated');
   };
 
   const inputClasses = "w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-xl outline-none transition-all text-sm md:text-base dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500";
@@ -482,6 +592,31 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
 
   const todayStr = new Date().toISOString().split('T')[0];
 
+  // Calculate Running Balance if filtered by a single account
+  let runningBalanceData: Record<string, number> = {};
+  if (journalFilterAccount) {
+    const acc = accounts.find(a => a.id === journalFilterAccount);
+    if (acc) {
+      // Sort chronologically
+      const chronologicalTxs = [...filteredTxs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      let currentBalance = 0;
+      
+      chronologicalTxs.forEach(t => {
+        const isDebit = t.debitAccount === journalFilterAccount;
+        const isCredit = t.creditAccount === journalFilterAccount;
+        
+        if (acc.type === 'asset' || acc.type === 'expense') {
+          if (isDebit) currentBalance += t.amount;
+          if (isCredit) currentBalance -= t.amount;
+        } else {
+          if (isCredit) currentBalance += t.amount;
+          if (isDebit) currentBalance -= t.amount;
+        }
+        runningBalanceData[t.id] = currentBalance;
+      });
+    }
+  }
+
   const activeBudget = React.useMemo(() => {
     const inputTags = [...(txTags ? txTags.split(',').map(t => t.trim().toLowerCase()) : []), ...(txDesc ? txDesc.split(' ').filter(w => w.startsWith('#')).map(w => w.slice(1).toLowerCase()) : [])];
     
@@ -525,6 +660,21 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
         </div>
       </div>
       
+      {templates.length > 0 && !isAddingTx && (
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {templates.map(t => (
+            <button 
+              key={t.id} 
+              onClick={() => applyTemplate(t)}
+              className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 px-4 py-2 rounded-xl text-sm font-medium text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700 whitespace-nowrap shadow-sm transition-colors"
+            >
+              <Zap className="w-4 h-4 text-amber-500" />
+              {t.name}
+            </button>
+          ))}
+        </div>
+      )}
+      
       {isAddingTx && (
         <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm mb-6">
           <form onSubmit={handleMagicSubmit} className="mb-8 pb-8 border-b border-slate-100 dark:border-gray-800">
@@ -557,9 +707,9 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-6">
             {activeBudget && (
-              <div className="lg:col-span-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 rounded-xl flex items-center justify-between">
+              <div className="lg:col-span-12 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">
                     {activeBudget.accountId ? `${accounts.find(a => a.id === activeBudget.accountId)?.name || 'Account'} Budget` : `#${activeBudget.tag} Budget`}
@@ -569,19 +719,23 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
                 <span className="text-xs text-slate-500 dark:text-gray-400">{formatCurrency(activeBudget.spent)} of {formatCurrency(activeBudget.limit)} spent</span>
               </div>
             )}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-2">
               <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Date</label>
               <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className={inputClasses} required />
             </div>
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
               <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Description <span className="text-[10px] font-normal italic">(Use #hashtags for trips)</span></label>
               <input type="text" value={txDesc} onChange={e => handleDescInput(e.target.value)} placeholder="e.g. Swiggy #Weekend" className={inputClasses} required />
             </div>
             <div className="lg:col-span-2">
+              <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Merchant / Location</label>
+              <input type="text" value={txMerchant} onChange={e => setTxMerchant(e.target.value)} placeholder="e.g. Target, Starbucks" className={inputClasses} />
+            </div>
+            <div className="lg:col-span-3">
               <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Tags <span className="text-[10px] font-normal italic">(comma separated)</span></label>
               <input type="text" value={txTags} onChange={e => setTxTags(e.target.value)} placeholder="e.g. food, trip" className={inputClasses} />
             </div>
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-2">
               <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Classification</label>
               <select value={txIntent || ''} onChange={e => setTxIntent(e.target.value ? (e.target.value as any) : undefined)} className={inputClasses}>
                 <option value="">Unclassified</option>
@@ -593,7 +747,7 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
             </div>
 
             {isSplitMode ? (
-              <div className="lg:col-span-6 bg-slate-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-slate-200 dark:border-gray-700">
+              <div className="lg:col-span-12 bg-slate-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-slate-200 dark:border-gray-700">
                 <div className="flex flex-col md:flex-row gap-4 mb-4">
                   <div className="flex-1">
                     <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Main Account</label>
@@ -636,12 +790,12 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
               </div>
             ) : (
               <>
-                <div>
+                <div className="lg:col-span-2">
                   <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Amount</label>
                   <input type="number" step="0.01" min="0" value={txAmount} onChange={e => setTxAmount(e.target.value)} placeholder="0.00" className={inputClasses} required={!isSplitMode} />
                 </div>
                 
-                <div className="lg:col-span-2 relative custom-select-container mt-2 md:mt-0" ref={debitRef}>
+                <div className="lg:col-span-4 relative custom-select-container mt-2 md:mt-0" ref={debitRef}>
                   <label className="block text-xs md:text-sm font-bold text-blue-600 dark:text-blue-400 mb-1.5">Debit (Dr)</label>
                   <div className="relative">
                     <input 
@@ -665,14 +819,14 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
                   )}
                 </div>
                 
-                <div className="flex items-center justify-center -my-2 md:my-0 lg:pb-1 relative z-10 pt-4 md:pt-6">
+                <div className="lg:col-span-2 flex items-center justify-center -my-2 md:my-0 lg:pb-1 relative z-10 pt-4 md:pt-6">
                   <button type="button" onClick={swapAccounts} className="bg-white dark:bg-gray-800 hover:bg-slate-100 dark:hover:bg-gray-700 text-slate-600 dark:text-gray-300 p-2 md:p-3 rounded-full border border-slate-200 dark:border-gray-700 shadow-sm transition-colors">
                     <ArrowUpDown className="w-5 h-5 md:hidden" />
                     <ArrowLeftRight className="w-5 h-5 hidden md:block" />
                   </button>
                 </div>
 
-                <div className="lg:col-span-2 relative custom-select-container" ref={creditRef}>
+                <div className="lg:col-span-4 relative custom-select-container" ref={creditRef}>
                   <label className="block text-xs md:text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1.5">Credit (Cr)</label>
                   <div className="relative">
                     <input 
@@ -698,8 +852,8 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
               </>
             )}
 
-            <div className="lg:col-span-6 flex flex-col md:flex-row justify-between items-center mt-2 md:mt-4 md:border-t border-slate-100 dark:border-gray-800 md:pt-6 gap-4">
-              <div className="flex items-center gap-4">
+            <div className="lg:col-span-12 flex flex-col md:flex-row justify-between items-center mt-2 md:mt-4 md:border-t border-slate-100 dark:border-gray-800 md:pt-6 gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 dark:text-gray-400">
                   <input type="checkbox" checked={txRecurring} onChange={e => setTxRecurring(e.target.checked)} className="w-4 h-4 rounded border-slate-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-800 cursor-pointer accent-blue-600" />
                   Recurring Template
@@ -708,6 +862,9 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
                   <input type="checkbox" checked={txCleared} onChange={e => setTxCleared(e.target.checked)} className="w-4 h-4 rounded border-slate-300 dark:border-gray-700 text-emerald-600 focus:ring-emerald-500 bg-white dark:bg-gray-800 cursor-pointer accent-emerald-600" />
                   Mark Cleared
                 </label>
+                <button type="button" onClick={saveAsTemplate} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                  <Zap className="w-4 h-4" /> Save as Quick-Add
+                </button>
               </div>
               <div className="flex items-center gap-3 w-full md:w-auto">
                 <button type="button" disabled={isReceiptParsing} onClick={() => document.getElementById('txReceiptFile')?.click()} className="flex-1 md:flex-none text-slate-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 flex justify-center items-center gap-1.5 text-sm bg-slate-100 dark:bg-gray-800 px-4 py-3.5 rounded-xl transition-colors disabled:opacity-50">
@@ -763,22 +920,52 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
         return null;
       })()}
 
+      {isBulkEditing && selectedTxs.size > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-3xl mb-6 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+          <div className="font-bold text-blue-800 dark:text-blue-200 whitespace-nowrap">
+            {selectedTxs.size} Selected
+          </div>
+          <div className="flex-1 flex flex-wrap gap-2">
+            <select value={bulkDebit} onChange={e => setBulkDebit(e.target.value)} className="p-2 text-sm rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-800 dark:text-white">
+              <option value="">Change Debit...</option>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+            <select value={bulkCredit} onChange={e => setBulkCredit(e.target.value)} className="p-2 text-sm rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-800 dark:text-white">
+              <option value="">Change Credit...</option>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+            <input type="text" value={bulkTags} onChange={e => setBulkTags(e.target.value)} placeholder="Add tags (comma separated)" className="p-2 text-sm rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-800 dark:text-white" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleBulkAction} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors">Apply</button>
+            <button onClick={deleteSelected} className="bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 px-4 py-2 rounded-lg text-sm font-bold transition-colors">Delete</button>
+            <button onClick={() => { setIsBulkEditing(false); setSelectedTxs(new Set()); }} className="bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-bold transition-colors">Cancel</button>
+          </div>
+        </div>
+      )}
+
       <div className="hidden md:block bg-white dark:bg-gray-900 rounded-3xl border border-slate-200 dark:border-gray-800 overflow-x-auto shadow-sm">
         <table className="w-full text-left border-collapse min-w-[800px]">
           <thead>
             <tr className="bg-slate-50 dark:bg-gray-900 border-b border-slate-200 dark:border-gray-800 text-xs text-slate-500 dark:text-gray-400 uppercase tracking-widest">
+              <th className="p-5 font-semibold w-12">
+                <button onClick={() => setIsBulkEditing(!isBulkEditing)} className="text-slate-400 hover:text-blue-500 transition-colors">
+                  <CheckSquare className="w-5 h-5" />
+                </button>
+              </th>
               <th className="p-5 font-semibold">Date</th>
               <th className="p-5 font-semibold">Description</th>
               <th className="p-5 font-semibold">Debit (Dr)</th>
               <th className="p-5 font-semibold">Credit (Cr)</th>
               <th className="p-5 font-semibold text-right">Amount</th>
+              {journalFilterAccount && <th className="p-5 font-semibold text-right">Balance</th>}
               <th className="p-5 font-semibold text-center">Action</th>
             </tr>
           </thead>
           <tbody>
             {filteredTxs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-12 text-center">
+                <td colSpan={journalFilterAccount ? 8 : 7} className="p-12 text-center">
                   <div className="w-16 h-16 bg-slate-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                     <BookOpen className="w-8 h-8 text-slate-400 dark:text-gray-500" />
                   </div>
@@ -796,36 +983,81 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
               const crAcc = accounts.find(a => a.id === t.creditAccount)?.name || 'Archived/Deleted';
               const isFuture = t.date > todayStr;
               const isCleared = t.cleared !== false;
+              const isEditing = editingTxId === t.id;
 
               return (
-                <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-gray-800/80 border-b border-slate-100 dark:border-gray-800 transition-colors">
-                  <td className="p-5 text-sm text-slate-500 dark:text-gray-400 whitespace-nowrap">{t.date}</td>
-                  <td className="p-5 font-medium text-slate-800 dark:text-gray-200">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        {t.description}
-                        {t.receipt && <button onClick={() => setViewingReceipt(t.receipt)} title="View Receipt" className="text-blue-500 hover:text-blue-600 bg-blue-50 dark:bg-blue-900/30 p-1.5 rounded-lg"><Paperclip className="w-4 h-4" /></button>}
-                        {isFuture && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">Pending</span>}
-                        {t.intent && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${t.intent === 'need' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : t.intent === 'want' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : t.intent === 'investment' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-400'}`}>{t.intent}</span>}
-                      </div>
-                      {t.tags && t.tags.length > 0 && (
-                        <div className="flex gap-1 flex-wrap">
-                          {t.tags.map((tag, i) => (
-                            <span key={i} className="text-[9px] bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 px-1.5 py-0.5 rounded uppercase tracking-wider">#{tag}</span>
-                          ))}
+                <tr key={t.id} className={`border-b border-slate-100 dark:border-gray-800 last:border-0 hover:bg-slate-50 dark:hover:bg-gray-800/50 transition-colors ${isFuture ? 'opacity-60' : ''} ${selectedTxs.has(t.id) ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
+                  <td className="p-5">
+                    {isBulkEditing && (
+                      <button 
+                        onClick={() => {
+                          const newSet = new Set(selectedTxs);
+                          if (newSet.has(t.id)) newSet.delete(t.id);
+                          else newSet.add(t.id);
+                          setSelectedTxs(newSet);
+                        }}
+                        className="text-slate-400 hover:text-blue-500 transition-colors"
+                      >
+                        {selectedTxs.has(t.id) ? <CheckSquare className="w-5 h-5 text-blue-500" /> : <Square className="w-5 h-5" />}
+                      </button>
+                    )}
+                  </td>
+                  <td className="p-5 text-sm font-medium text-slate-600 dark:text-gray-300 whitespace-nowrap">
+                    {isEditing ? (
+                      <input type="date" value={editTxDate} onChange={e => setEditTxDate(e.target.value)} className="p-1 border rounded text-xs dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                    ) : t.date}
+                  </td>
+                  <td className="p-5">
+                    {isEditing ? (
+                      <input type="text" value={editTxDesc} onChange={e => setEditTxDesc(e.target.value)} className="p-1 border rounded text-xs w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 dark:text-white cursor-pointer hover:text-blue-600 transition-colors" onClick={() => { setEditingTxId(t.id); setEditTxDate(t.date); setEditTxDesc(t.description); setEditTxAmount(t.amount.toString()); }}>{t.description}</span>
+                          {t.receipt && <button onClick={() => setViewingReceipt(t.receipt)} title="View Receipt" className="text-blue-500 hover:text-blue-600 bg-blue-50 dark:bg-blue-900/30 p-1.5 rounded-lg"><Paperclip className="w-4 h-4" /></button>}
+                          {isFuture && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">Pending</span>}
+                          {t.intent && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${t.intent === 'need' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : t.intent === 'want' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : t.intent === 'investment' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-400'}`}>{t.intent}</span>}
                         </div>
-                      )}
-                    </div>
+                        <div className="flex gap-2 items-center flex-wrap">
+                          {t.merchant && (
+                            <span className="text-[10px] text-slate-500 dark:text-gray-400 flex items-center gap-0.5"><MapPin className="w-3 h-3" /> {t.merchant}</span>
+                          )}
+                          {t.tags && t.tags.length > 0 && (
+                            <div className="flex gap-1 flex-wrap">
+                              {t.tags.map((tag, i) => (
+                                <span key={i} className="text-[9px] bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 px-1.5 py-0.5 rounded uppercase tracking-wider">#{tag}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </td>
                   <td className="p-5 text-sm text-blue-600 dark:text-blue-400 font-medium">{drAcc}</td>
                   <td className="p-5 text-sm text-emerald-600 dark:text-emerald-400 font-medium">{crAcc}</td>
-                  <td className="p-5 font-bold text-right text-slate-900 dark:text-gray-100">{formatCurrency(t.amount)}</td>
+                  <td className="p-5 text-right font-black text-slate-900 dark:text-white">
+                    {isEditing ? (
+                      <input type="number" step="0.01" value={editTxAmount} onChange={e => setEditTxAmount(e.target.value)} className="p-1 border rounded text-xs w-20 text-right dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                    ) : formatCurrency(t.amount)}
+                  </td>
+                  {journalFilterAccount && (
+                    <td className="p-5 text-right font-bold text-slate-700 dark:text-gray-300">
+                      {formatCurrency(runningBalanceData[t.id] || 0)}
+                    </td>
+                  )}
                   <td className="p-5 text-center">
-                    <div className="flex justify-center gap-2">
-                      <button onClick={() => toggleCleared(t.id)} title={isCleared ? 'Mark Uncleared' : 'Mark Cleared'} className={`p-1.5 rounded-lg transition-colors ${isCleared ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30' : 'text-slate-400 bg-slate-100 dark:bg-gray-800'}`}><CheckCircle2 className="w-4 h-4" /></button>
-                      <button onClick={() => duplicateTransaction(t.id)} title="Duplicate Entry" className="text-slate-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 bg-white dark:bg-gray-900 border border-slate-200 dark:border-transparent hover:border-blue-200 dark:hover:bg-gray-800 p-1.5 rounded-lg transition-colors"><Copy className="w-4 h-4" /></button>
-                      <button onClick={() => deleteTransaction(t.id)} title="Delete" className="text-slate-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 bg-white dark:bg-gray-900 border border-slate-200 dark:border-transparent hover:border-red-200 dark:hover:bg-gray-800 p-1.5 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
-                    </div>
+                    {isEditing ? (
+                      <div className="flex justify-center gap-2">
+                        <button onClick={() => saveInlineEdit(t.id)} className="text-emerald-500 hover:text-emerald-600"><CheckCircle2 className="w-5 h-5" /></button>
+                        <button onClick={() => setEditingTxId(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                      </div>
+                    ) : (
+                      <div className="flex justify-center gap-2">
+                        <button onClick={() => toggleCleared(t.id)} title={isCleared ? 'Mark Uncleared' : 'Mark Cleared'} className={`p-1.5 rounded-lg transition-colors ${isCleared ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30' : 'text-slate-400 bg-slate-100 dark:bg-gray-800'}`}><CheckCircle2 className="w-4 h-4" /></button>
+                        <button onClick={() => duplicateTransaction(t.id)} title="Duplicate Entry" className="text-slate-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 bg-white dark:bg-gray-900 border border-slate-200 dark:border-transparent hover:border-blue-200 dark:hover:bg-gray-800 p-1.5 rounded-lg transition-colors"><Copy className="w-4 h-4" /></button>
+                        <button onClick={() => deleteTransaction(t.id)} title="Delete" className="text-slate-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 bg-white dark:bg-gray-900 border border-slate-200 dark:border-transparent hover:border-red-200 dark:hover:bg-gray-800 p-1.5 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
@@ -864,13 +1096,18 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
                       {isFuture && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">Pending</span>}
                       {t.intent && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${t.intent === 'need' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : t.intent === 'want' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : t.intent === 'investment' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-400'}`}>{t.intent}</span>}
                     </p>
-                    {t.tags && t.tags.length > 0 && (
-                      <div className="flex gap-1 flex-wrap mt-1.5">
-                        {t.tags.map((tag, i) => (
-                          <span key={i} className="text-[9px] bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 px-1.5 py-0.5 rounded uppercase tracking-wider">#{tag}</span>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex gap-2 items-center flex-wrap mt-1.5">
+                      {t.merchant && (
+                        <span className="text-[10px] text-slate-500 dark:text-gray-400 flex items-center gap-0.5"><MapPin className="w-3 h-3" /> {t.merchant}</span>
+                      )}
+                      {t.tags && t.tags.length > 0 && (
+                        <div className="flex gap-1 flex-wrap">
+                          {t.tags.map((tag, i) => (
+                            <span key={i} className="text-[9px] bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 px-1.5 py-0.5 rounded uppercase tracking-wider">#{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-1 font-medium">{t.date}</p>
                   </div>
                   <span className="font-bold text-slate-900 dark:text-gray-100 text-lg shrink-0">{formatCurrency(t.amount)}</span>

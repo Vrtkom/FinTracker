@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Account, Transaction, Recurring, Goal, Scenario, CustomReport, Budget } from '../types';
+import { Account, Transaction, Recurring, Goal, Scenario, CustomReport, Budget, TransactionTemplate } from '../types';
 import { auth, db, signInWithGoogle, logout } from '../firebase';
 import { collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
@@ -25,6 +25,8 @@ interface FinanceContextType {
   setGoals: (goals: Goal[]) => Promise<void>;
   budgets: Budget[];
   setBudgets: (budgets: Budget[]) => Promise<void>;
+  templates: TransactionTemplate[];
+  setTemplates: (templates: TransactionTemplate[]) => Promise<void>;
   
   showRecurringModal: boolean;
   setShowRecurringModal: (val: boolean) => void;
@@ -90,6 +92,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const [recurring, setRecurringState] = useState<Recurring[]>([]);
   const [goals, setGoalsState] = useState<Goal[]>([]);
   const [budgets, setBudgetsState] = useState<Budget[]>([]);
+  const [templates, setTemplatesState] = useState<TransactionTemplate[]>([]);
   
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [showManageRecurringModal, setShowManageRecurringModal] = useState(false);
@@ -115,6 +118,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
         setRecurringState([]);
         setGoalsState([]);
         setBudgetsState([]);
+        setTemplatesState([]);
         setActivityStreak(0);
       }
     });
@@ -143,6 +147,10 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
     const unsubBudgets = onSnapshot(collection(db, `users/${user.uid}/budgets`), (snapshot) => {
       setBudgetsState(snapshot.docs.map(doc => doc.data() as Budget));
     }, (error) => handleFirestoreError(error, OperationType.GET, `users/${user.uid}/budgets`));
+
+    const unsubTemplates = onSnapshot(collection(db, `users/${user.uid}/templates`), (snapshot) => {
+      setTemplatesState(snapshot.docs.map(doc => doc.data() as TransactionTemplate));
+    }, (error) => handleFirestoreError(error, OperationType.GET, `users/${user.uid}/templates`));
 
     const unsubActivity = onSnapshot(doc(db, `users/${user.uid}/stats/activity`), (docSnap) => {
       if (docSnap.exists()) {
@@ -222,6 +230,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       unsubRecurring();
       unsubGoals();
       unsubBudgets();
+      unsubTemplates();
       unsubActivity();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -332,6 +341,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const setRecurring = (recs: Recurring[]) => syncCollection('recurring', recurring, recs);
   const setGoals = (gs: Goal[]) => syncCollection('goals', goals, gs);
   const setBudgets = (bs: Budget[]) => syncCollection('budgets', budgets, bs);
+  const setTemplates = (ts: TransactionTemplate[]) => syncCollection('templates', templates, ts);
 
   useEffect(() => {
     const currentMonthKey = new Date().toISOString().split('T')[0].slice(0,7);
@@ -347,6 +357,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
     await setRecurring([]);
     await setGoals([]);
     await setBudgets([]);
+    await setTemplates([]);
     localStorage.removeItem('fintrack_last_checkin');
   };
 
@@ -369,6 +380,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       recurring, setRecurring,
       goals, setGoals,
       budgets, setBudgets,
+      templates, setTemplates,
       showRecurringModal, setShowRecurringModal,
       showManageRecurringModal, setShowManageRecurringModal,
       viewingReceipt, setViewingReceipt,

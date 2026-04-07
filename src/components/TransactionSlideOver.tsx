@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Paperclip, Calendar, ArrowRight, Tag, Edit2, Save, Trash2 } from 'lucide-react';
+import { X, Paperclip, Calendar, ArrowRight, Tag, Edit2, Save, Trash2, MapPin } from 'lucide-react';
 import { formatCurrency } from '../utils/finance';
 import { useFinance } from '../context/FinanceContext';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ export const TransactionSlideOver: React.FC<TransactionSlideOverProps> = ({ isOp
   const [txDebit, setTxDebit] = useState('');
   const [txCredit, setTxCredit] = useState('');
   const [txTags, setTxTags] = useState('');
+  const [txMerchant, setTxMerchant] = useState('');
 
   const transaction = transactions.find(t => t.id === transactionId);
 
@@ -33,6 +34,7 @@ export const TransactionSlideOver: React.FC<TransactionSlideOverProps> = ({ isOp
       setTxDebit(transaction.debitAccount);
       setTxCredit(transaction.creditAccount);
       setTxTags(transaction.tags ? transaction.tags.join(', ') : '');
+      setTxMerchant(transaction.merchant || '');
       setIsEditing(false);
     }
   }, [transaction, isOpen]);
@@ -61,7 +63,8 @@ export const TransactionSlideOver: React.FC<TransactionSlideOverProps> = ({ isOp
       amount,
       debitAccount: txDebit,
       creditAccount: txCredit,
-      tags: txTags.split(',').map(t => t.trim()).filter(Boolean)
+      tags: txTags.split(',').map(t => t.trim()).filter(Boolean),
+      merchant: txMerchant.trim() || undefined
     };
 
     setTransactions(transactions.map(t => t.id === transaction.id ? updatedTx : t));
@@ -131,6 +134,10 @@ export const TransactionSlideOver: React.FC<TransactionSlideOverProps> = ({ isOp
                   <input type="date" value={txDate} onChange={e => setTxDate(e.target.value)} className={inputClasses} />
                 </div>
                 <div>
+                  <label className="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1.5">Merchant / Location</label>
+                  <input type="text" value={txMerchant} onChange={e => setTxMerchant(e.target.value)} placeholder="e.g. Target, Amazon" className={inputClasses} />
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-slate-500 dark:text-gray-400 mb-1.5">Debit Account (To)</label>
                   <select value={txDebit} onChange={e => setTxDebit(e.target.value)} className={inputClasses}>
                     {accounts.filter(a => !a.isArchived).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -165,6 +172,13 @@ export const TransactionSlideOver: React.FC<TransactionSlideOverProps> = ({ isOp
                     <Calendar className="w-4 h-4 text-slate-400" />
                     <span className="text-slate-600 dark:text-gray-300 font-medium">{transaction.date}</span>
                   </div>
+                  
+                  {transaction.merchant && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <MapPin className="w-4 h-4 text-slate-400" />
+                      <span className="text-slate-600 dark:text-gray-300 font-medium">{transaction.merchant}</span>
+                    </div>
+                  )}
                   
                   <div className="flex items-center gap-3 text-sm">
                     <div className="flex items-center gap-2 flex-1">

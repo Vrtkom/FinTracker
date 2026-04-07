@@ -117,7 +117,12 @@ service cloud.firestore {
              data.debitAccount is string && data.debitAccount.size() > 0 && data.debitAccount.size() < 100 &&
              data.creditAccount is string && data.creditAccount.size() > 0 && data.creditAccount.size() < 100 &&
              data.cleared is bool &&
-             (!('receipt' in data) || data.receipt == null || (data.receipt is string && data.receipt.size() < 1000000));
+             (!('receipt' in data) || data.receipt == null || (data.receipt is string && data.receipt.size() < 1000000)) &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() < 100)) &&
+             (!('merchant' in data) || (data.merchant is string && data.merchant.size() < 100)) &&
+             (!('intent' in data) || data.intent in ['need', 'want', 'investment', 'transfer']) &&
+             (!('groupId' in data) || (data.groupId is string && data.groupId.size() < 100)) &&
+             (!('splits' in data) || (data.splits is list && data.splits.size() < 100));
     }
 
     function isValidRecurring() {
@@ -147,6 +152,19 @@ service cloud.firestore {
              data.tag is string && data.tag.size() > 0 && data.tag.size() < 100 &&
              data.limit is number && data.limit >= 0 &&
              data.period == 'monthly';
+    }
+
+    function isValidTemplate() {
+      let data = request.resource.data;
+      return hasRequiredFields(['id', 'name', 'description', 'amount', 'debitAccount', 'creditAccount', 'uid']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.description is string && data.description.size() >= 0 && data.description.size() < 500 &&
+             data.amount is number &&
+             data.debitAccount is string && data.debitAccount.size() > 0 && data.debitAccount.size() < 100 &&
+             data.creditAccount is string && data.creditAccount.size() > 0 && data.creditAccount.size() < 100 &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() < 100)) &&
+             (!('merchant' in data) || (data.merchant is string && data.merchant.size() < 100));
     }
 
     function isValidStat() {
@@ -193,6 +211,13 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidBudget() && uidUnchanged();
         allow update: if isOwner(userId) && isDocOwner() && isValidBudget() && uidNotModified();
+        allow delete: if isOwner(userId) && isDocOwner();
+      }
+      
+      match /templates/{templateId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidTemplate() && uidUnchanged();
+        allow update: if isOwner(userId) && isDocOwner() && isValidTemplate() && uidNotModified();
         allow delete: if isOwner(userId) && isDocOwner();
       }
       
