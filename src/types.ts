@@ -17,6 +17,8 @@ export interface Account {
   excludeFromForecast?: boolean;
   isArchived: boolean;
   pots?: Pot[];
+  order?: number;
+  creditLimit?: number;
 }
 
 export interface Split {

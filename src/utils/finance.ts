@@ -1,4 +1,15 @@
-import { Account, Transaction, Recurring } from '../types';
+import { Account, Transaction, Recurring, AccountType } from '../types';
+
+export const getAccountColor = (type: AccountType) => {
+  switch (type) {
+    case 'asset': return '#10b981'; // emerald-500
+    case 'expense': return '#eab308'; // yellow-500
+    case 'income': return '#3b82f6'; // blue-500
+    case 'liability': return '#ef4444'; // red-500
+    case 'equity': return '#8b5cf6'; // violet-500
+    default: return '#64748b'; // slate-500
+  }
+};
 
 export const formatCurrency = (amount: number) => 
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount || 0);

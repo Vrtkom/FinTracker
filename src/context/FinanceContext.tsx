@@ -263,7 +263,11 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
           if (op.type === 'delete') {
             batch.delete(doc(db, `users/${user.uid}/${collectionName}/${op.id}`));
           } else {
-            batch.set(doc(db, `users/${user.uid}/${collectionName}/${op.item.id}`), { ...op.item, uid: user.uid });
+            // Strip undefined values to prevent Firestore errors
+            const cleanItem = Object.fromEntries(
+              Object.entries(op.item).filter(([_, v]) => v !== undefined)
+            );
+            batch.set(doc(db, `users/${user.uid}/${collectionName}/${op.item.id}`), { ...cleanItem, uid: user.uid });
           }
         });
         
