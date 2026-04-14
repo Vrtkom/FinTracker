@@ -97,6 +97,87 @@ export const getAverages = (accounts: Account[], transactions: Transaction[]) =>
   };
 };
 
+export const getNetWorthChartData = (accounts: Account[], transactions: Transaction[]) => {
+  const months = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthStr = d.toISOString().split('T')[0].substring(0, 7);
+    const monthLabel = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+    const endOfMonthStr = endOfMonth.toISOString().split('T')[0];
+    
+    months.push({ monthStr, monthLabel, endOfMonthStr });
+  }
+
+  const data = months.map(m => {
+    let assets = 0;
+    let liabilities = 0;
+    
+    accounts.forEach(acc => {
+      if (acc.type === 'asset' || acc.type === 'liability') {
+        const debits = transactions.filter(t => t.date <= m.endOfMonthStr && t.debitAccount === acc.id).reduce((sum, t) => sum + t.amount, 0);
+        const credits = transactions.filter(t => t.date <= m.endOfMonthStr && t.creditAccount === acc.id).reduce((sum, t) => sum + t.amount, 0);
+        const bal = acc.type === 'asset' ? debits - credits : credits - debits;
+        if (acc.type === 'asset') assets += bal;
+        else liabilities += bal;
+      }
+    });
+    
+    const netWorth = assets - liabilities;
+    
+    const impacts: Record<string, number> = {};
+    transactions.filter(t => t.date.startsWith(m.monthStr)).forEach(t => {
+      const drAcc = accounts.find(a => a.id === t.debitAccount);
+      const crAcc = accounts.find(a => a.id === t.creditAccount);
+      
+      if (drAcc && drAcc.type === 'expense') impacts[drAcc.name] = (impacts[drAcc.name] || 0) - t.amount;
+      if (drAcc && drAcc.type === 'income') impacts[drAcc.name] = (impacts[drAcc.name] || 0) - t.amount;
+      if (drAcc && drAcc.type === 'equity') impacts[drAcc.name] = (impacts[drAcc.name] || 0) - t.amount;
+      
+      if (crAcc && crAcc.type === 'income') impacts[crAcc.name] = (impacts[crAcc.name] || 0) + t.amount;
+      if (crAcc && crAcc.type === 'expense') impacts[crAcc.name] = (impacts[crAcc.name] || 0) + t.amount;
+      if (crAcc && crAcc.type === 'equity') impacts[crAcc.name] = (impacts[crAcc.name] || 0) + t.amount;
+    });
+    
+    let topPositive = { name: 'None', amount: 0 };
+    let topNegative = { name: 'None', amount: 0 };
+    
+    Object.entries(impacts).forEach(([name, amount]) => {
+      if (amount > topPositive.amount) topPositive = { name, amount };
+      if (amount < topNegative.amount) topNegative = { name, amount };
+    });
+    
+    return {
+      name: m.monthLabel,
+      netWorth,
+      topPositive,
+      topNegative,
+      change: 0
+    };
+  });
+  
+  for (let i = 1; i < data.length; i++) {
+    data[i].change = data[i].netWorth - data[i-1].netWorth;
+  }
+  
+  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth() - 6, 0).toISOString().split('T')[0];
+  let prevAssets = 0, prevLiabs = 0;
+  accounts.forEach(acc => {
+    if (acc.type === 'asset' || acc.type === 'liability') {
+      const debits = transactions.filter(t => t.date <= prevMonthEnd && t.debitAccount === acc.id).reduce((sum, t) => sum + t.amount, 0);
+      const credits = transactions.filter(t => t.date <= prevMonthEnd && t.creditAccount === acc.id).reduce((sum, t) => sum + t.amount, 0);
+      const bal = acc.type === 'asset' ? debits - credits : credits - debits;
+      if (acc.type === 'asset') prevAssets += bal;
+      else prevLiabs += bal;
+    }
+  });
+  data[0].change = data[0].netWorth - (prevAssets - prevLiabs);
+  
+  return data;
+};
+
 export const getGamificationStreaks = (accounts: Account[], transactions: Transaction[]) => {
   const todayStr = new Date().toISOString().split('T')[0];
   const uniqueDates = [...new Set(transactions.filter(t => t.date <= todayStr).map(t => t.date))].sort().reverse();

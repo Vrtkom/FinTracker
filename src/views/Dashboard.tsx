@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Coffee, Coins, Lock, CreditCard, Wallet, CalendarDays, Activity, Trophy, Repeat, Paperclip, X } from 'lucide-react';
+import { Coffee, Coins, Lock, CreditCard, Wallet, CalendarDays, Activity, Trophy, Repeat, Paperclip, X, TrendingUp } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
-import { formatCurrency, getTotals, getAverages, getGamificationStreaks, getAccountBalance } from '../utils/finance';
+import { formatCurrency, getTotals, getAverages, getGamificationStreaks, getAccountBalance, getNetWorthChartData } from '../utils/finance';
 import { TransactionSlideOver } from '../components/TransactionSlideOver';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) => {
   const { accounts, transactions, recurring, goals, hideBalances, setHideBalances, setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate } = useFinance();
@@ -11,6 +12,7 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
   const totals = useMemo(() => getTotals(accounts, transactions), [accounts, transactions]);
   const avgs = useMemo(() => getAverages(accounts, transactions), [accounts, transactions]);
   const streaks = useMemo(() => getGamificationStreaks(accounts, transactions), [accounts, transactions]);
+  const netWorthData = useMemo(() => getNetWorthChartData(accounts, transactions), [accounts, transactions]);
   
   const runwayMonths = avgs.avgNeeds > 0 ? (totals.liquidAssets / avgs.avgNeeds).toFixed(1) : '∞';
   const todayStr = new Date().toISOString().split('T')[0];
@@ -200,6 +202,77 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
             <span className="text-xs md:text-sm font-medium truncate">Net Worth</span>
           </div>
           <p className={`text-lg md:text-2xl font-bold text-slate-900 dark:text-white truncate ${blurClass}`} onClick={(e) => { e.stopPropagation(); toggleHideBalances(); }} title="Click to show/hide balance">{formatCurrency(totals.netWorth)}</p>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-900 p-5 md:p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm mt-2 md:mt-6">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-emerald-500" /> Net Worth Trend
+        </h3>
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={netWorthData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorNetWorth" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="dark:stroke-gray-800" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 12, fill: '#64748b' }}
+                tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                width={60}
+              />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div className="bg-white dark:bg-gray-800 p-3 rounded-xl shadow-lg border border-slate-100 dark:border-gray-700">
+                        <p className="font-bold text-slate-900 dark:text-white mb-1">{data.name}</p>
+                        <p className={`text-lg font-black ${hideBalances ? 'blur-sm' : ''} text-emerald-600 dark:text-emerald-400`}>
+                          {formatCurrency(data.netWorth)}
+                        </p>
+                        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-gray-700 space-y-1">
+                          <p className="text-xs text-slate-500 dark:text-gray-400 flex justify-between gap-4">
+                            <span>Change:</span>
+                            <span className={`font-bold ${data.change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                              {data.change >= 0 ? '+' : ''}{formatCurrency(data.change)}
+                            </span>
+                          </p>
+                          {data.topPositive.amount > 0 && (
+                            <p className="text-xs text-slate-500 dark:text-gray-400 flex justify-between gap-4">
+                              <span className="truncate max-w-[100px]">Top (+): {data.topPositive.name}</span>
+                              <span className="text-emerald-500">+{formatCurrency(data.topPositive.amount)}</span>
+                            </p>
+                          )}
+                          {data.topNegative.amount < 0 && (
+                            <p className="text-xs text-slate-500 dark:text-gray-400 flex justify-between gap-4">
+                              <span className="truncate max-w-[100px]">Top (-): {data.topNegative.name}</span>
+                              <span className="text-red-500">{formatCurrency(data.topNegative.amount)}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="netWorth" 
+                stroke="#10b981" 
+                strokeWidth={3}
+                fillOpacity={1} 
+                fill="url(#colorNetWorth)" 
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
