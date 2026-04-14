@@ -7,6 +7,54 @@
 }
 
 @layer base {
+  html.theme-neon {
+    --color-gray-950: #030014;
+    --color-gray-900: #090920;
+    --color-gray-850: #0d0d2b;
+    --color-gray-800: #151538;
+    --color-gray-700: #20204a;
+    --color-gray-600: #2a2a5a;
+    
+    --color-blue-400: #00f0ff;
+    --color-blue-500: #00d0ff;
+    --color-blue-600: #00a0cc;
+    --color-blue-700: #007099;
+    --color-blue-800: #004066;
+    --color-blue-900: #002033;
+    
+    --color-indigo-400: #ff00ff;
+    --color-indigo-500: #cc00cc;
+    --color-indigo-600: #990099;
+    
+    --color-emerald-400: #39ff14;
+    --color-emerald-500: #2ee60d;
+    --color-emerald-600: #24b30a;
+    --color-emerald-900: #062002;
+    
+    --color-red-400: #ff0055;
+    --color-red-500: #cc0044;
+    --color-red-600: #990033;
+    --color-red-900: #20000a;
+    
+    --color-yellow-400: #ffe600;
+    --color-yellow-500: #cca300;
+    
+    --color-orange-400: #ff6600;
+    --color-orange-500: #e65c00;
+    --color-orange-600: #cc5200;
+    
+    --color-slate-900: #ffffff;
+    --color-slate-800: #e0e0e0;
+    --color-slate-700: #c0c0c0;
+    --color-slate-600: #a0a0cc;
+    --color-slate-500: #707099;
+    --color-slate-400: #50507a;
+    --color-slate-300: #30305a;
+    --color-slate-200: #20204a;
+    --color-slate-100: #151538;
+    --color-slate-50: #0d0d2b;
+  }
+
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }

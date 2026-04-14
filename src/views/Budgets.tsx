@@ -113,7 +113,7 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
         {activeTab === 'budgets' && (budgetProgress.length > 0 || isAddingBudget) && (
           <button 
             onClick={() => setIsAddingBudget(!isAddingBudget)}
-            className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 dark:hover:bg-gray-100 transition-colors"
+            className="bg-slate-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 dark:hover:bg-gray-100 transition-colors"
           >
             {isAddingBudget ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             {isAddingBudget ? 'Cancel' : 'New Budget'}
@@ -122,7 +122,7 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
         {activeTab === 'goals' && (goals.length > 0 || isAddingGoal) && (
           <button 
             onClick={() => setIsAddingGoal(!isAddingGoal)}
-            className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 dark:hover:bg-gray-100 transition-colors"
+            className="bg-slate-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 dark:hover:bg-gray-100 transition-colors"
           >
             {isAddingGoal ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             {isAddingGoal ? 'Cancel' : 'New Goal'}
@@ -133,13 +133,13 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-gray-800 pb-4 mb-6">
         <button 
           onClick={() => setActiveTab('budgets')}
-          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 ${activeTab === 'budgets' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800'}`}
+          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 ${activeTab === 'budgets' ? 'bg-slate-900 text-white dark:bg-white dark:text-gray-900 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800'}`}
         >
           <Target className="w-4 h-4" /> Budgets
         </button>
         <button 
           onClick={() => setActiveTab('goals')}
-          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 ${activeTab === 'goals' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800'}`}
+          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 ${activeTab === 'goals' ? 'bg-slate-900 text-white dark:bg-white dark:text-gray-900 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800'}`}
         >
           <PiggyBank className="w-4 h-4" /> Financial Goals
         </button>

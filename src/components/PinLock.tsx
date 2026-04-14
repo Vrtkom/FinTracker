@@ -1,8 +1,8 @@
 import React from 'react';
-import { Lock, Sun, Moon } from 'lucide-react';
+import { Lock, Sun, Moon, Zap } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 
-export const PinLock = ({ isDarkMode, toggleTheme }: { isDarkMode: boolean, toggleTheme: () => void }) => {
+export const PinLock = ({ theme, cycleTheme }: { theme: string, cycleTheme: () => void }) => {
   const { login } = useFinance();
 
   const handleLogin = async () => {
@@ -16,11 +16,11 @@ export const PinLock = ({ isDarkMode, toggleTheme }: { isDarkMode: boolean, togg
   return (
     <div className="fixed inset-0 z-[200] bg-slate-50 dark:bg-gray-950 flex flex-col items-center justify-center p-4">
       <button 
-        onClick={toggleTheme} 
+        onClick={cycleTheme} 
         className="absolute top-4 right-4 p-2 text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white transition-colors"
-        title="Toggle Theme"
+        title={`Theme: ${theme}`}
       >
-        {isDarkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+        {theme === 'light' ? <Sun className="w-6 h-6" /> : theme === 'dark' ? <Moon className="w-6 h-6" /> : <Zap className="w-6 h-6 text-blue-400" />}
       </button>
       <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-gray-800 w-full max-w-sm text-center">
         <div className="bg-blue-50 dark:bg-blue-900/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">

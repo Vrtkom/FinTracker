@@ -23,9 +23,9 @@ import { Toaster } from 'sonner';
 const AppContent = () => {
   const { user, migrateLocalData, setShowGlobalAddTx, setGlobalAddTxDefaults } = useFinance();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isDarkMode, setIsDarkMode] = useState(() => {
+  const [theme, setTheme] = useState<'light' | 'dark' | 'neon'>(() => {
     const saved = localStorage.getItem('fintrack_theme');
-    return saved ? saved === 'dark' : true;
+    return (saved as 'light' | 'dark' | 'neon') || 'dark';
   });
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
   const [showDismissConfirm, setShowDismissConfirm] = useState(false);
@@ -63,23 +63,25 @@ const AppContent = () => {
   }, [activeTab, setGlobalAddTxDefaults]);
 
   React.useEffect(() => {
-    if (isDarkMode) {
+    document.documentElement.classList.remove('dark', 'theme-neon');
+    if (theme === 'dark') {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('fintrack_theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('fintrack_theme', 'light');
+    } else if (theme === 'neon') {
+      document.documentElement.classList.add('dark', 'theme-neon');
     }
-  }, [isDarkMode]);
+    localStorage.setItem('fintrack_theme', theme);
+  }, [theme]);
 
-  const toggleTheme = () => setIsDarkMode(!isDarkMode);
+  const cycleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : prev === 'dark' ? 'neon' : 'light');
+  };
 
   if (!user) {
-    return <PinLock isDarkMode={isDarkMode} toggleTheme={toggleTheme} />;
+    return <PinLock theme={theme} cycleTheme={cycleTheme} />;
   }
 
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab} isDarkMode={isDarkMode} toggleTheme={toggleTheme}>
+    <Layout activeTab={activeTab} setActiveTab={setActiveTab} theme={theme} cycleTheme={cycleTheme}>
       {showMigrationPrompt && (
         <div className="mb-6 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>

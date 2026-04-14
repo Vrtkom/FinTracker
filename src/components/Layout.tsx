@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Landmark, LayoutDashboard, Wallet, BookOpen, PieChart, 
-  Download, Upload, Trash2, Repeat, LogOut, Eye, EyeOff, Sun, Moon,
+  Download, Upload, Trash2, Repeat, LogOut, Eye, EyeOff, Sun, Moon, Zap,
   Activity, Flame, AlertTriangle, Target
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
@@ -16,7 +16,7 @@ const tabs = [
   { id: 'analytics', icon: Activity, label: 'Analytics', short: 'Analytics' },
 ];
 
-export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTheme }: { children: React.ReactNode, activeTab: string, setActiveTab: (t: string) => void, isDarkMode: boolean, toggleTheme: () => void }) => {
+export const Layout = ({ children, activeTab, setActiveTab, theme, cycleTheme }: { children: React.ReactNode, activeTab: string, setActiveTab: (t: string) => void, theme: string, cycleTheme: () => void }) => {
   const { 
     user, logoutUser,
     hideBalances, setHideBalances, 
@@ -150,8 +150,8 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
               <span className="text-xs font-bold">{activityStreak}</span>
             </div>
           )}
-          <button onClick={toggleTheme} className="text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white p-1" title="Toggle Theme">
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          <button onClick={cycleTheme} className="text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white p-1" title={`Theme: ${theme}`}>
+            {theme === 'light' ? <Sun className="w-5 h-5" /> : theme === 'dark' ? <Moon className="w-5 h-5" /> : <Zap className="w-5 h-5 text-blue-400" />}
           </button>
           <button onClick={toggleHideBalances} className="text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white p-1">
             {hideBalances ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -182,8 +182,8 @@ export const Layout = ({ children, activeTab, setActiveTab, isDarkMode, toggleTh
                     <span className="text-xs font-bold">{activityStreak}</span>
                   </div>
                 )}
-                <button onClick={toggleTheme} className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors p-1.5" title="Toggle Theme">
-                  {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                <button onClick={cycleTheme} className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors p-1.5" title={`Theme: ${theme}`}>
+                  {theme === 'light' ? <Sun className="w-5 h-5" /> : theme === 'dark' ? <Moon className="w-5 h-5" /> : <Zap className="w-5 h-5 text-blue-400" />}
                 </button>
                 <button onClick={toggleHideBalances} className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors p-1.5">
                   {hideBalances ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
