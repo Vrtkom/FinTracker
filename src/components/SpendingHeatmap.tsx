@@ -62,20 +62,20 @@ export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void 
           // Red scale: intensity based on absolute diff above threshold
           const diff = amount - threshold;
           const intensity = diff / maxRedDiff;
-          if (intensity < 0.2) colorClass = 'bg-red-200 dark:bg-red-900/40';
-          else if (intensity < 0.4) colorClass = 'bg-red-300 dark:bg-red-800/60';
-          else if (intensity < 0.6) colorClass = 'bg-red-400 dark:bg-red-700/80';
-          else if (intensity < 0.8) colorClass = 'bg-red-500 dark:bg-red-600';
-          else colorClass = 'bg-red-600 dark:bg-red-500';
+          if (intensity < 0.2) colorClass = 'bg-red-200 dark:bg-red-950';
+          else if (intensity < 0.4) colorClass = 'bg-red-300 dark:bg-red-900';
+          else if (intensity < 0.6) colorClass = 'bg-red-400 dark:bg-red-800';
+          else if (intensity < 0.8) colorClass = 'bg-red-500 dark:bg-red-700';
+          else colorClass = 'bg-red-600 dark:bg-red-600';
         } else {
           // Green scale: intensity based on absolute diff below threshold
           const diff = threshold - amount;
           const intensity = diff / maxGreenDiff;
-          if (intensity < 0.2) colorClass = 'bg-emerald-100 dark:bg-emerald-900/40';
-          else if (intensity < 0.4) colorClass = 'bg-emerald-200 dark:bg-emerald-800/60';
-          else if (intensity < 0.6) colorClass = 'bg-emerald-300 dark:bg-emerald-700/80';
-          else if (intensity < 0.8) colorClass = 'bg-emerald-400 dark:bg-emerald-600';
-          else colorClass = 'bg-emerald-500 dark:bg-emerald-500';
+          if (intensity < 0.2) colorClass = 'bg-emerald-100 dark:bg-emerald-950';
+          else if (intensity < 0.4) colorClass = 'bg-emerald-200 dark:bg-emerald-900';
+          else if (intensity < 0.6) colorClass = 'bg-emerald-300 dark:bg-emerald-800';
+          else if (intensity < 0.8) colorClass = 'bg-emerald-400 dark:bg-emerald-700';
+          else colorClass = 'bg-emerald-500 dark:bg-emerald-600';
         }
       }
 
@@ -221,17 +221,17 @@ export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void 
             <span>No Activity</span>
             <div className="w-3 h-3 rounded-sm bg-slate-100 dark:bg-gray-800" />
             <span className="ml-4">Below Target</span>
-            <div className="w-3 h-3 rounded-sm bg-emerald-500 dark:bg-emerald-500" />
-            <div className="w-3 h-3 rounded-sm bg-emerald-400 dark:bg-emerald-600" />
-            <div className="w-3 h-3 rounded-sm bg-emerald-300 dark:bg-emerald-700/80" />
-            <div className="w-3 h-3 rounded-sm bg-emerald-200 dark:bg-emerald-800/60" />
-            <div className="w-3 h-3 rounded-sm bg-emerald-100 dark:bg-emerald-900/40" />
+            <div className="w-3 h-3 rounded-sm bg-emerald-500 dark:bg-emerald-600" />
+            <div className="w-3 h-3 rounded-sm bg-emerald-400 dark:bg-emerald-700" />
+            <div className="w-3 h-3 rounded-sm bg-emerald-300 dark:bg-emerald-800" />
+            <div className="w-3 h-3 rounded-sm bg-emerald-200 dark:bg-emerald-900" />
+            <div className="w-3 h-3 rounded-sm bg-emerald-100 dark:bg-emerald-950" />
             <span className="ml-4">Above Target</span>
-            <div className="w-3 h-3 rounded-sm bg-red-200 dark:bg-red-900/40" />
-            <div className="w-3 h-3 rounded-sm bg-red-300 dark:bg-red-800/60" />
-            <div className="w-3 h-3 rounded-sm bg-red-400 dark:bg-red-700/80" />
-            <div className="w-3 h-3 rounded-sm bg-red-500 dark:bg-red-600" />
-            <div className="w-3 h-3 rounded-sm bg-red-600 dark:bg-red-500" />
+            <div className="w-3 h-3 rounded-sm bg-red-200 dark:bg-red-950" />
+            <div className="w-3 h-3 rounded-sm bg-red-300 dark:bg-red-900" />
+            <div className="w-3 h-3 rounded-sm bg-red-400 dark:bg-red-800" />
+            <div className="w-3 h-3 rounded-sm bg-red-500 dark:bg-red-700" />
+            <div className="w-3 h-3 rounded-sm bg-red-600 dark:bg-red-600" />
           </div>
         </div>
       </div>
