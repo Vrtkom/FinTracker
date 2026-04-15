@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { Coffee, Coins, Lock, CreditCard, Wallet, CalendarDays, Activity, Trophy, Repeat, Paperclip, X, TrendingUp } from 'lucide-react';
+import { Coffee, Coins, Lock, CreditCard, Wallet, CalendarDays, Activity, Trophy, Repeat, Paperclip, X, TrendingUp, Settings } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getTotals, getAverages, getGamificationStreaks, getAccountBalance, getNetWorthChartData } from '../utils/finance';
 import { TransactionSlideOver } from '../components/TransactionSlideOver';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) => {
-  const { accounts, transactions, recurring, goals, hideBalances, setHideBalances, setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate } = useFinance();
+  const { accounts, transactions, recurring, goals, hideBalances, setHideBalances, setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate, funds, spendableAccounts, setSpendableAccounts } = useFinance();
   const [slideOverTxId, setSlideOverTxId] = useState<string | null>(null);
+  const [showSpendableSettings, setShowSpendableSettings] = useState(false);
 
   const totals = useMemo(() => getTotals(accounts, transactions), [accounts, transactions]);
   const avgs = useMemo(() => getAverages(accounts, transactions), [accounts, transactions]);
@@ -22,6 +23,13 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
   const toggleHideBalances = () => setHideBalances(!hideBalances);
 
   const [selectedDay, setSelectedDay] = useState<any>(null);
+
+  const totalSpendable = useMemo(() => {
+    const spendableAccs = accounts.filter(a => spendableAccounts.includes(a.id));
+    const totalBank = spendableAccs.reduce((sum, a) => sum + getAccountBalance(a.id, accounts, transactions), 0);
+    const totalFunds = funds.reduce((sum, f) => sum + f.balance, 0);
+    return totalBank - totalFunds;
+  }, [accounts, transactions, spendableAccounts, funds]);
 
   const now = new Date();
   const curMonth = now.getMonth();
@@ -156,15 +164,36 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
       <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-4">Dashboard</h2>
       
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-5 md:p-6 mb-6 text-white shadow-lg shadow-blue-500/30 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="bg-white/20 p-3 rounded-2xl shrink-0">
-            <Coffee className="w-6 h-6 md:w-8 md:h-8 text-white" />
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-6 w-full md:w-auto">
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 p-3 rounded-2xl shrink-0">
+              <Coffee className="w-6 h-6 md:w-8 md:h-8 text-white" />
+            </div>
+            <div>
+              <p className="text-blue-100 text-xs md:text-sm font-medium uppercase tracking-widest mb-0.5">Safe to spend today</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl md:text-4xl font-black">{formatCurrency(safeToSpend)}</p>
+                <p className="text-blue-100 text-xs md:text-sm pb-1">/ {daysLeft} days left</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-blue-100 text-xs md:text-sm font-medium uppercase tracking-widest mb-0.5">Safe to spend today</p>
-            <div className="flex items-baseline gap-2">
-              <p className="text-3xl md:text-4xl font-black">{formatCurrency(safeToSpend)}</p>
-              <p className="text-blue-100 text-xs md:text-sm pb-1">/ {daysLeft} days left</p>
+          
+          <div className="hidden md:block w-px h-12 bg-white/20"></div>
+          
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 p-3 rounded-2xl shrink-0">
+              <Wallet className="w-6 h-6 md:w-8 md:h-8 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <p className="text-blue-100 text-xs md:text-sm font-medium uppercase tracking-widest">Total Spendable</p>
+                <button onClick={() => setShowSpendableSettings(true)} className="text-blue-200 hover:text-white transition-colors" title="Customize Spendable Accounts">
+                  <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                </button>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className={`text-3xl md:text-4xl font-black ${blurClass}`} onClick={(e) => { e.stopPropagation(); toggleHideBalances(); }}>{formatCurrency(totalSpendable)}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -486,6 +515,56 @@ export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) =
         onClose={() => setSlideOverTxId(null)} 
         transactionId={slideOverTxId} 
       />
+
+      {showSpendableSettings && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl border border-slate-200 dark:border-gray-800">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Settings className="w-5 h-5 text-blue-500" />
+                Spendable Accounts
+              </h2>
+              <button onClick={() => setShowSpendableSettings(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-gray-300">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <p className="text-sm text-slate-500 dark:text-gray-400 mb-6">
+              Select which accounts should be included in your "Total Spendable" calculation. Your allocated funds will be subtracted from the total balance of these accounts.
+            </p>
+
+            <div className="space-y-3 max-h-64 overflow-y-auto mb-6 pr-2">
+              {accounts.filter(a => a.type === 'asset').map(acc => (
+                <label key={acc.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-gray-800 hover:bg-slate-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
+                  <input 
+                    type="checkbox" 
+                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    checked={spendableAccounts.includes(acc.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSpendableAccounts([...spendableAccounts, acc.id]);
+                      } else {
+                        setSpendableAccounts(spendableAccounts.filter(id => id !== acc.id));
+                      }
+                    }}
+                  />
+                  <div>
+                    <p className="font-bold text-slate-800 dark:text-gray-200">{acc.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-gray-400">{formatCurrency(getAccountBalance(acc.id, accounts, transactions))}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <button 
+              onClick={() => setShowSpendableSettings(false)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

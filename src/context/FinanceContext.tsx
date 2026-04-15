@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Account, Transaction, Recurring, Goal, Scenario, CustomReport, Budget, TransactionTemplate } from '../types';
+import { Account, Transaction, Recurring, Goal, Scenario, CustomReport, Budget, TransactionTemplate, Fund } from '../types';
 import { auth, db, signInWithGoogle, logout } from '../firebase';
 import { collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
@@ -25,6 +25,10 @@ interface FinanceContextType {
   setGoals: (goals: Goal[]) => Promise<void>;
   budgets: Budget[];
   setBudgets: (budgets: Budget[]) => Promise<void>;
+  funds: Fund[];
+  setFunds: (funds: Fund[]) => Promise<void>;
+  spendableAccounts: string[];
+  setSpendableAccounts: (accounts: string[]) => Promise<void>;
   templates: TransactionTemplate[];
   setTemplates: (templates: TransactionTemplate[]) => Promise<void>;
   
@@ -92,6 +96,11 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const [recurring, setRecurringState] = useState<Recurring[]>([]);
   const [goals, setGoalsState] = useState<Goal[]>([]);
   const [budgets, setBudgetsState] = useState<Budget[]>([]);
+  const [funds, setFundsState] = useState<Fund[]>([]);
+  const [spendableAccounts, setSpendableAccountsState] = useState<string[]>(() => {
+    const saved = localStorage.getItem('fintrack_spendable_accounts');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [templates, setTemplatesState] = useState<TransactionTemplate[]>([]);
   
   const [showRecurringModal, setShowRecurringModal] = useState(false);
@@ -151,6 +160,10 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
     const unsubTemplates = onSnapshot(collection(db, `users/${user.uid}/templates`), (snapshot) => {
       setTemplatesState(snapshot.docs.map(doc => doc.data() as TransactionTemplate));
     }, (error) => handleFirestoreError(error, OperationType.GET, `users/${user.uid}/templates`));
+
+    const unsubFunds = onSnapshot(collection(db, `users/${user.uid}/funds`), (snapshot) => {
+      setFundsState(snapshot.docs.map(doc => doc.data() as Fund));
+    }, (error) => handleFirestoreError(error, OperationType.GET, `users/${user.uid}/funds`));
 
     const unsubActivity = onSnapshot(doc(db, `users/${user.uid}/stats/activity`), (docSnap) => {
       if (docSnap.exists()) {
@@ -231,6 +244,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       unsubGoals();
       unsubBudgets();
       unsubTemplates();
+      unsubFunds();
       unsubActivity();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -342,6 +356,12 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const setGoals = (gs: Goal[]) => syncCollection('goals', goals, gs);
   const setBudgets = (bs: Budget[]) => syncCollection('budgets', budgets, bs);
   const setTemplates = (ts: TransactionTemplate[]) => syncCollection('templates', templates, ts);
+  const setFunds = (fs: Fund[]) => syncCollection('funds', funds, fs);
+
+  const setSpendableAccounts = async (accs: string[]) => {
+    setSpendableAccountsState(accs);
+    localStorage.setItem('fintrack_spendable_accounts', JSON.stringify(accs));
+  };
 
   useEffect(() => {
     const currentMonthKey = new Date().toISOString().split('T')[0].slice(0,7);
@@ -380,6 +400,8 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       recurring, setRecurring,
       goals, setGoals,
       budgets, setBudgets,
+      funds, setFunds,
+      spendableAccounts, setSpendableAccounts,
       templates, setTemplates,
       showRecurringModal, setShowRecurringModal,
       showManageRecurringModal, setShowManageRecurringModal,

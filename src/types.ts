@@ -64,6 +64,13 @@ export interface Recurring {
   day: number;
 }
 
+export interface Fund {
+  id: string;
+  name: string;
+  balance: number;
+  target?: number;
+}
+
 export interface Goal {
   id: string;
   name: string;

@@ -92,6 +92,19 @@
         "uid": { "type": "string" }
       },
       "required": ["id", "name", "description", "amount", "debitAccount", "creditAccount", "uid"]
+    },
+    "Fund": {
+      "title": "Fund",
+      "description": "A user's allocated fund",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "balance": { "type": "number" },
+        "target": { "type": "number" },
+        "uid": { "type": "string" }
+      },
+      "required": ["id", "name", "balance", "uid"]
     }
   },
   "firestore": {
@@ -118,6 +131,10 @@
     "/users/{userId}/templates/{templateId}": {
       "schema": { "$ref": "#/entities/TransactionTemplate" },
       "description": "User's quick-add transaction templates"
+    },
+    "/users/{userId}/funds/{fundId}": {
+      "schema": { "$ref": "#/entities/Fund" },
+      "description": "User's allocated funds"
     }
   }
 }

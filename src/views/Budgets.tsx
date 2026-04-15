@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
-import { Target, Plus, Trash2, AlertCircle, ArrowRight, PiggyBank, Home, Car, Plane, GraduationCap, Heart, Laptop, Smartphone, Baby, Gift, X } from 'lucide-react';
+import { Target, Plus, Trash2, AlertCircle, ArrowRight, PiggyBank, Home, Car, Plane, GraduationCap, Heart, Laptop, Smartphone, Baby, Gift, X, Wallet } from 'lucide-react';
 
 export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => {
-  const { budgets, setBudgets, transactions, setJournalFilterSearch, setJournalFilterAccount, setJournalFilterDate, setGlobalAddTxDefaults, goals, setGoals, accounts } = useFinance();
-  const [activeTab, setActiveTab] = useState<'budgets' | 'goals'>('budgets');
+  const { budgets, setBudgets, transactions, setJournalFilterSearch, setJournalFilterAccount, setJournalFilterDate, setGlobalAddTxDefaults, goals, setGoals, accounts, funds, setFunds } = useFinance();
+  const [activeTab, setActiveTab] = useState<'budgets' | 'goals' | 'funds'>('budgets');
   const [isAddingBudget, setIsAddingBudget] = useState(false);
   const [isAddingGoal, setIsAddingGoal] = useState(false);
+  const [isAddingFund, setIsAddingFund] = useState(false);
   const [newBudgetType, setNewBudgetType] = useState<'tag' | 'account'>('tag');
   const [newTag, setNewTag] = useState('');
   const [newBudgetAccount, setNewBudgetAccount] = useState('');
@@ -16,6 +17,10 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
   const [newGoalName, setNewGoalName] = useState('');
   const [newGoalAmount, setNewGoalAmount] = useState('');
   const [newGoalAccount, setNewGoalAccount] = useState('');
+
+  const [newFundName, setNewFundName] = useState('');
+  const [newFundBalance, setNewFundBalance] = useState('');
+  const [newFundTarget, setNewFundTarget] = useState('');
 
   const currentMonthTxs = useMemo(() => {
     const now = new Date();
@@ -96,6 +101,25 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
     setGoals(goals.filter(g => g.id !== id));
   };
 
+  const addFund = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newFundName.trim();
+    const balance = parseFloat(newFundBalance);
+    const target = newFundTarget ? parseFloat(newFundTarget) : undefined;
+    
+    if (!name || isNaN(balance)) return;
+    
+    setFunds([...funds, { id: Date.now().toString(), name, balance, target }]);
+    setNewFundName('');
+    setNewFundBalance('');
+    setNewFundTarget('');
+    setIsAddingFund(false);
+  };
+
+  const deleteFund = (id: string) => {
+    setFunds(funds.filter(f => f.id !== id));
+  };
+
   const inputClasses = "w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-xl outline-none transition-all text-sm md:text-base dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500";
 
   return (
@@ -128,6 +152,15 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
             {isAddingGoal ? 'Cancel' : 'New Goal'}
           </button>
         )}
+        {activeTab === 'funds' && (funds.length > 0 || isAddingFund) && (
+          <button 
+            onClick={() => setIsAddingFund(!isAddingFund)}
+            className="bg-slate-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 dark:hover:bg-gray-100 transition-colors"
+          >
+            {isAddingFund ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {isAddingFund ? 'Cancel' : 'New Fund'}
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-gray-800 pb-4 mb-6">
@@ -142,6 +175,12 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
           className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 ${activeTab === 'goals' ? 'bg-slate-900 text-white dark:bg-white dark:text-gray-900 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800'}`}
         >
           <PiggyBank className="w-4 h-4" /> Financial Goals
+        </button>
+        <button 
+          onClick={() => setActiveTab('funds')}
+          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 ${activeTab === 'funds' ? 'bg-slate-900 text-white dark:bg-white dark:text-gray-900 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800'}`}
+        >
+          <Wallet className="w-4 h-4" /> Funds
         </button>
       </div>
 
@@ -385,6 +424,84 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
                     </div>
                   </div>
                   <button onClick={() => deleteGoal(g.id)} className="text-slate-400 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'funds' && (
+        <div className="space-y-6">
+          {isAddingFund && (
+            <div className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm animate-in slide-in-from-top-2">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">Add New Fund</h3>
+              <form onSubmit={addFund} className="flex flex-col md:flex-row gap-4 md:items-end flex-wrap">
+                <div className="flex-1 w-full">
+                  <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Fund Name</label>
+                  <input type="text" value={newFundName} onChange={e => setNewFundName(e.target.value)} className={inputClasses} placeholder="e.g. Emergency Fund, Taxes" required />
+                </div>
+                <div className="w-full md:w-48">
+                  <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Current Balance</label>
+                  <input type="number" step="0.01" min="0" value={newFundBalance} onChange={e => setNewFundBalance(e.target.value)} className={inputClasses} placeholder="0.00" required />
+                </div>
+                <div className="w-full md:w-48">
+                  <label className="block text-xs md:text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Target Amount (Optional)</label>
+                  <input type="number" step="0.01" min="0" value={newFundTarget} onChange={e => setNewFundTarget(e.target.value)} className={inputClasses} placeholder="0.00" />
+                </div>
+                <button type="submit" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white px-6 py-3.5 rounded-xl font-bold flex justify-center items-center gap-2 transition-colors mt-2 md:mt-0 shadow-lg shadow-blue-500/20">
+                  <Plus className="w-5 h-5" /> Add Fund
+                </button>
+              </form>
+            </div>
+          )}
+
+          {funds.length === 0 && !isAddingFund && (
+            <div className="col-span-full bg-white dark:bg-gray-900 p-8 rounded-3xl border border-dashed border-slate-300 dark:border-gray-700 text-center">
+              <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Wallet className="w-8 h-8 text-blue-500" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No Funds Yet</h3>
+              <p className="text-slate-500 dark:text-gray-400 text-sm max-w-md mx-auto mb-6">
+                Allocate money into specific funds (like Emergency Fund or Taxes) to separate it from your spendable balance.
+              </p>
+              <button 
+                onClick={() => setIsAddingFund(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-lg shadow-blue-500/20"
+              >
+                Create Your First Fund
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {funds.map(f => {
+              const pct = f.target ? Math.min(100, Math.max(0, (f.balance / f.target) * 100)) : 0;
+
+              return (
+                <div key={f.id} className="flex flex-col p-4 bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-gray-800 shadow-sm hover:border-blue-300 dark:hover:border-blue-700 transition-colors group">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                        <Wallet className="w-5 h-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800 dark:text-gray-200">{f.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-gray-400">
+                          {f.target ? `Target: ${formatCurrency(f.target)}` : 'No target set'}
+                        </p>
+                      </div>
+                    </div>
+                    <button onClick={() => deleteFund(f.id)} className="text-slate-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(f.balance)}</p>
+                    {f.target && (
+                      <div className="w-full bg-slate-100 dark:bg-gray-800 rounded-full h-2 mt-2 overflow-hidden">
+                        <div className="h-2 rounded-full bg-blue-500 transition-all duration-500" style={{ width: `${pct}%` }}></div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}

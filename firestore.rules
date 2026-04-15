@@ -167,6 +167,15 @@ service cloud.firestore {
              (!('merchant' in data) || (data.merchant is string && data.merchant.size() < 100));
     }
 
+    function isValidFund() {
+      let data = request.resource.data;
+      return hasRequiredFields(['id', 'name', 'balance', 'uid']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.balance is number && data.balance >= 0 &&
+             (!('target' in data) || (data.target is number && data.target >= 0));
+    }
+
     function isValidStat() {
       let data = request.resource.data;
       return data.keys().hasOnly(['lastActiveDate', 'streak']) &&
@@ -218,6 +227,13 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidTemplate() && uidUnchanged();
         allow update: if isOwner(userId) && isDocOwner() && isValidTemplate() && uidNotModified();
+        allow delete: if isOwner(userId) && isDocOwner();
+      }
+      
+      match /funds/{fundId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidFund() && uidUnchanged();
+        allow update: if isOwner(userId) && isDocOwner() && isValidFund() && uidNotModified();
         allow delete: if isOwner(userId) && isDocOwner();
       }
       
