@@ -183,6 +183,14 @@ service cloud.firestore {
              (!('streak' in data) || data.streak is number);
     }
 
+    function isValidPreferences() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['spendableAccounts', 'hideBalances', 'advancedMode']) &&
+             (!('spendableAccounts' in data) || (data.spendableAccounts is list && data.spendableAccounts.size() < 100)) &&
+             (!('hideBalances' in data) || data.hideBalances is bool) &&
+             (!('advancedMode' in data) || data.advancedMode is bool);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -241,6 +249,13 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidStat();
         allow update: if isOwner(userId) && isValidStat();
+        allow delete: if isOwner(userId);
+      }
+      
+      match /settings/preferences {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidPreferences();
+        allow update: if isOwner(userId) && isValidPreferences();
         allow delete: if isOwner(userId);
       }
     }

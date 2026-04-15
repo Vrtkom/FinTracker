@@ -88,8 +88,8 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthReady, setIsAuthReady] = useState(false);
   
   const [isUnlocked, setIsUnlocked] = useState(true); // Default to true, rely on Firebase Auth
-  const [hideBalances, setHideBalances] = useState(localStorage.getItem('fintrack_hide_balances') !== 'false');
-  const [advancedMode, setAdvancedMode] = useState(localStorage.getItem('fintrack_advanced_mode') === 'true');
+  const [hideBalances, setHideBalancesState] = useState(localStorage.getItem('fintrack_hide_balances') !== 'false');
+  const [advancedMode, setAdvancedModeState] = useState(localStorage.getItem('fintrack_advanced_mode') === 'true');
   
   const [accounts, setAccountsState] = useState<Account[]>([]);
   const [transactions, setTransactionsState] = useState<Transaction[]>([]);
@@ -203,6 +203,24 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       }
     }, (error) => handleFirestoreError(error, OperationType.GET, `users/${user.uid}/stats/activity`));
 
+    const unsubPreferences = onSnapshot(doc(db, `users/${user.uid}/settings/preferences`), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.spendableAccounts !== undefined) {
+          setSpendableAccountsState(data.spendableAccounts);
+          localStorage.setItem('fintrack_spendable_accounts', JSON.stringify(data.spendableAccounts));
+        }
+        if (data.hideBalances !== undefined) {
+          setHideBalancesState(data.hideBalances);
+          localStorage.setItem('fintrack_hide_balances', String(data.hideBalances));
+        }
+        if (data.advancedMode !== undefined) {
+          setAdvancedModeState(data.advancedMode);
+          localStorage.setItem('fintrack_advanced_mode', String(data.advancedMode));
+        }
+      }
+    }, (error) => handleFirestoreError(error, OperationType.GET, `users/${user.uid}/settings/preferences`));
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         // Trigger a re-read of the document to update streak if day changed
@@ -246,6 +264,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       unsubTemplates();
       unsubFunds();
       unsubActivity();
+      unsubPreferences();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [user, isAuthReady]);
@@ -361,6 +380,25 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const setSpendableAccounts = async (accs: string[]) => {
     setSpendableAccountsState(accs);
     localStorage.setItem('fintrack_spendable_accounts', JSON.stringify(accs));
+    if (user) {
+      await setDoc(doc(db, `users/${user.uid}/settings/preferences`), { spendableAccounts: accs }, { merge: true });
+    }
+  };
+
+  const setHideBalances = async (hide: boolean) => {
+    setHideBalancesState(hide);
+    localStorage.setItem('fintrack_hide_balances', String(hide));
+    if (user) {
+      await setDoc(doc(db, `users/${user.uid}/settings/preferences`), { hideBalances: hide }, { merge: true });
+    }
+  };
+
+  const setAdvancedMode = async (advanced: boolean) => {
+    setAdvancedModeState(advanced);
+    localStorage.setItem('fintrack_advanced_mode', String(advanced));
+    if (user) {
+      await setDoc(doc(db, `users/${user.uid}/settings/preferences`), { advancedMode: advanced }, { merge: true });
+    }
   };
 
   useEffect(() => {

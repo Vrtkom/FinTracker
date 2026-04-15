@@ -105,6 +105,16 @@
         "uid": { "type": "string" }
       },
       "required": ["id", "name", "balance", "uid"]
+    },
+    "Preferences": {
+      "title": "Preferences",
+      "description": "User preferences",
+      "type": "object",
+      "properties": {
+        "spendableAccounts": { "type": "array", "items": { "type": "string" } },
+        "hideBalances": { "type": "boolean" },
+        "advancedMode": { "type": "boolean" }
+      }
     }
   },
   "firestore": {
@@ -135,6 +145,10 @@
     "/users/{userId}/funds/{fundId}": {
       "schema": { "$ref": "#/entities/Fund" },
       "description": "User's allocated funds"
+    },
+    "/users/{userId}/settings/preferences": {
+      "schema": { "$ref": "#/entities/Preferences" },
+      "description": "User's app preferences"
     }
   }
 }
