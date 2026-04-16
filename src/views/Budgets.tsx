@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, getAccountBalance } from '../utils/finance';
-import { Target, Plus, Trash2, AlertCircle, ArrowRight, PiggyBank, Home, Car, Plane, GraduationCap, Heart, Laptop, Smartphone, Baby, Gift, X, Wallet } from 'lucide-react';
+import { Target, Plus, Trash2, AlertCircle, ArrowRight, PiggyBank, Home, Car, Plane, GraduationCap, Heart, Laptop, Smartphone, Baby, Gift, X, Wallet, Edit2 } from 'lucide-react';
 
 export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => {
   const { budgets, setBudgets, transactions, setJournalFilterSearch, setJournalFilterAccount, setJournalFilterDate, setGlobalAddTxDefaults, goals, setGoals, accounts, funds, setFunds } = useFinance();
@@ -21,6 +21,11 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
   const [newFundName, setNewFundName] = useState('');
   const [newFundBalance, setNewFundBalance] = useState('');
   const [newFundTarget, setNewFundTarget] = useState('');
+
+  const [editingFund, setEditingFund] = useState<any>(null);
+  const [editFundName, setEditFundName] = useState('');
+  const [editFundBalance, setEditFundBalance] = useState('');
+  const [editFundTarget, setEditFundTarget] = useState('');
 
   const currentMonthTxs = useMemo(() => {
     const now = new Date();
@@ -118,6 +123,26 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
 
   const deleteFund = (id: string) => {
     setFunds(funds.filter(f => f.id !== id));
+  };
+
+  const startEditFund = (f: any) => {
+    setEditingFund(f);
+    setEditFundName(f.name);
+    setEditFundBalance(f.balance.toString());
+    setEditFundTarget(f.target ? f.target.toString() : '');
+  };
+
+  const saveEditFund = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFund) return;
+    const name = editFundName.trim();
+    const balance = parseFloat(editFundBalance);
+    const target = editFundTarget ? parseFloat(editFundTarget) : undefined;
+    
+    if (!name || isNaN(balance)) return;
+    
+    setFunds(funds.map(f => f.id === editingFund.id ? { ...f, name, balance, target } : f));
+    setEditingFund(null);
   };
 
   const inputClasses = "w-full p-3.5 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-xl outline-none transition-all text-sm md:text-base dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-500";
@@ -492,7 +517,10 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
                         </p>
                       </div>
                     </div>
-                    <button onClick={() => deleteFund(f.id)} className="text-slate-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => startEditFund(f)} className="text-slate-400 hover:text-blue-500 p-1"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => deleteFund(f.id)} className="text-slate-400 hover:text-red-500 p-1"><Trash2 className="w-4 h-4" /></button>
+                    </div>
                   </div>
                   <div className="mt-2">
                     <p className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(f.balance)}</p>
@@ -506,6 +534,39 @@ export const Budgets = ({ switchTab }: { switchTab: (tab: string) => void }) => 
               );
             })}
           </div>
+
+          {editingFund && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl border border-slate-200 dark:border-gray-800">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Edit2 className="w-5 h-5 text-blue-500" />
+                    Edit Fund
+                  </h2>
+                  <button onClick={() => setEditingFund(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-gray-300">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <form onSubmit={saveEditFund} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Fund Name</label>
+                    <input type="text" value={editFundName} onChange={e => setEditFundName(e.target.value)} className={inputClasses} required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Current Balance</label>
+                    <input type="number" step="0.01" min="0" value={editFundBalance} onChange={e => setEditFundBalance(e.target.value)} className={inputClasses} required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">Target Amount (Optional)</label>
+                    <input type="number" step="0.01" min="0" value={editFundTarget} onChange={e => setEditFundTarget(e.target.value)} className={inputClasses} />
+                  </div>
+                  <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-colors mt-4">
+                    Save Changes
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
