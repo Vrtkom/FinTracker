@@ -176,6 +176,19 @@ service cloud.firestore {
              (!('target' in data) || (data.target is number && data.target >= 0));
     }
 
+    function isValidPortfolioItem() {
+      let data = request.resource.data;
+      return hasRequiredFields(['id', 'name', 'type', 'investedAmount', 'currentValue', 'uid']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.type is string && data.type.size() > 0 && data.type.size() < 50 &&
+             data.investedAmount is number && data.investedAmount >= 0 &&
+             data.currentValue is number && data.currentValue >= 0 &&
+             (!('quantity' in data) || (data.quantity is number && data.quantity >= 0)) &&
+             (!('investmentType' in data) || (data.investmentType is string && data.investmentType.size() < 50)) &&
+             (!('linkToAccountId' in data) || (data.linkToAccountId is string && data.linkToAccountId.size() < 100));
+    }
+
     function isValidStat() {
       let data = request.resource.data;
       return data.keys().hasOnly(['lastActiveDate', 'streak']) &&
@@ -242,6 +255,13 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidFund() && uidUnchanged();
         allow update: if isOwner(userId) && isDocOwner() && isValidFund() && uidNotModified();
+        allow delete: if isOwner(userId) && isDocOwner();
+      }
+      
+      match /portfolioItems/{itemId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidPortfolioItem() && uidUnchanged();
+        allow update: if isOwner(userId) && isDocOwner() && isValidPortfolioItem() && uidNotModified();
         allow delete: if isOwner(userId) && isDocOwner();
       }
       

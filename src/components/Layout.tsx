@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Landmark, LayoutDashboard, Wallet, BookOpen, PieChart, 
   Download, Upload, Trash2, Repeat, LogOut, Eye, EyeOff, Sun, Moon, Zap,
-  Activity, Flame, AlertTriangle, Target
+  Activity, Flame, AlertTriangle, Target, Briefcase
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { getTotals } from '../utils/finance';
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 const tabs = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', short: 'Home' },
   { id: 'accounts', icon: Landmark, label: 'Accounts', short: 'Accounts' },
+  { id: 'portfolio', icon: Briefcase, label: 'Portfolio', short: 'Portfolio' },
   { id: 'transactions', icon: BookOpen, label: 'Journal', short: 'Journal' },
   { id: 'budgets', icon: Target, label: 'Planning', short: 'Planning' },
   { id: 'analytics', icon: Activity, label: 'Analytics', short: 'Analytics' },
@@ -26,7 +27,8 @@ export const Layout = ({ children, activeTab, setActiveTab, theme, cycleTheme }:
     setAccounts, setTransactions, setRecurring, setGoals,
     activityStreak,
     clearAllData,
-    setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate
+    setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate,
+    portfolioItems
   } = useFinance();
   
   const [hasImbalance, setHasImbalance] = useState(false);
@@ -34,10 +36,10 @@ export const Layout = ({ children, activeTab, setActiveTab, theme, cycleTheme }:
   const [clearConfirmText, setClearConfirmText] = useState('');
 
   useEffect(() => {
-    const totals = getTotals(accounts, transactions);
+    const totals = getTotals(accounts, transactions, portfolioItems);
     const imbalance = totals.assets - (totals.liabilities + totals.equity + totals.income - totals.expenses);
     setHasImbalance(Math.abs(imbalance) > 0.01 && transactions.length > 0);
-  }, [accounts, transactions]);
+  }, [accounts, transactions, portfolioItems]);
 
   const toggleHideBalances = () => {
     setHideBalances(!hideBalances);

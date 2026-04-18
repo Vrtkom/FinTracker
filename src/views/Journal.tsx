@@ -51,6 +51,22 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
   const creditRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const handleLogTrade = (e: CustomEvent) => {
+      if (switchTab) switchTab('transactions');
+      setShowGlobalAddTx(true);
+      setGlobalAddTxDefaults({
+        debitAccount: e.detail.debitAccount,
+        creditAccount: e.detail.creditAccount,
+        tags: e.detail.tags || 'trade',
+        type: e.detail.intent || 'investment'
+      });
+    };
+    
+    window.addEventListener('log-trade', handleLogTrade as EventListener);
+    return () => window.removeEventListener('log-trade', handleLogTrade as EventListener);
+  }, [switchTab, setShowGlobalAddTx, setGlobalAddTxDefaults]);
+
+  useEffect(() => {
     if (showGlobalAddTx) {
       setIsAddingTx(true);
       setShowGlobalAddTx(false);
@@ -979,8 +995,8 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
               </tr>
             ) : (
               filteredTxs.slice().reverse().map(t => {
-              const drAcc = accounts.find(a => a.id === t.debitAccount)?.name || 'Archived/Deleted';
-              const crAcc = accounts.find(a => a.id === t.creditAccount)?.name || 'Archived/Deleted';
+              const drAcc = t.debitAccount === 'PENDING' ? 'Pending (Select Account)' : accounts.find(a => a.id === t.debitAccount)?.name || 'Archived/Deleted';
+              const crAcc = t.creditAccount === 'PENDING' ? 'Pending (Select Account)' : accounts.find(a => a.id === t.creditAccount)?.name || 'Archived/Deleted';
               const isFuture = t.date > todayStr;
               const isCleared = t.cleared !== false;
               const isEditing = editingTxId === t.id;
@@ -1015,7 +1031,8 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-900 dark:text-white cursor-pointer hover:text-blue-600 transition-colors" onClick={() => { setEditingTxId(t.id); setEditTxDate(t.date); setEditTxDesc(t.description); setEditTxAmount(t.amount.toString()); }}>{t.description}</span>
                           {t.receipt && <button onClick={() => setViewingReceipt(t.receipt)} title="View Receipt" className="text-blue-500 hover:text-blue-600 bg-blue-50 dark:bg-blue-900/30 p-1.5 rounded-lg"><Paperclip className="w-4 h-4" /></button>}
-                          {isFuture && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">Pending</span>}
+                          {isFuture && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">Future</span>}
+                          {(!t.debitAccount || !t.creditAccount || t.debitAccount === 'PENDING' || t.creditAccount === 'PENDING') && <span className="text-[9px] bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">Incomplete</span>}
                           {t.intent && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${t.intent === 'need' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : t.intent === 'want' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' : t.intent === 'investment' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-400'}`}>{t.intent}</span>}
                         </div>
                         <div className="flex gap-2 items-center flex-wrap">

@@ -78,6 +78,18 @@ export interface Goal {
   linkedAccountId: string;
 }
 
+export interface PortfolioItem {
+  id: string;
+  name: string;
+  type: string; // e.g., 'Stock', 'Mutual Fund', 'RD', 'Other'
+  investmentType?: 'sip' | 'one-time' | 'sip+'; // Specific to MFs mostly
+  investedAmount: number;
+  currentValue: number;
+  quantity?: number;
+  linkToAccountId?: string; // Optional: To associate with a specific shadow/master account if ever needed
+  uid?: string;
+}
+
 export interface Budget {
   id: string;
   tag?: string;

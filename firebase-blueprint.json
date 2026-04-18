@@ -106,6 +106,21 @@
       },
       "required": ["id", "name", "balance", "uid"]
     },
+    "PortfolioItem": {
+      "title": "PortfolioItem",
+      "description": "A user's investment portfolio asset",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "investedAmount": { "type": "number" },
+        "currentValue": { "type": "number" },
+        "linkToAccountId": { "type": "string" },
+        "quantity": { "type": "number" }
+      },
+      "required": ["id", "name", "type", "investedAmount", "currentValue"]
+    },
     "Preferences": {
       "title": "Preferences",
       "description": "User preferences",
@@ -145,6 +160,10 @@
     "/users/{userId}/funds/{fundId}": {
       "schema": { "$ref": "#/entities/Fund" },
       "description": "User's allocated funds"
+    },
+    "/users/{userId}/portfolioItems/{itemId}": {
+      "schema": { "$ref": "#/entities/PortfolioItem" },
+      "description": "User's investment portfolio items"
     },
     "/users/{userId}/settings/preferences": {
       "schema": { "$ref": "#/entities/Preferences" },

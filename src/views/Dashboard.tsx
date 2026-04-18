@@ -6,11 +6,11 @@ import { TransactionSlideOver } from '../components/TransactionSlideOver';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const Dashboard = ({ switchTab }: { switchTab: (tab: string) => void }) => {
-  const { accounts, transactions, recurring, goals, hideBalances, setHideBalances, setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate, funds, spendableAccounts, setSpendableAccounts } = useFinance();
+  const { accounts, transactions, recurring, goals, hideBalances, setHideBalances, setJournalFilterAccount, setJournalFilterSearch, setJournalFilterDate, funds, spendableAccounts, setSpendableAccounts, portfolioItems } = useFinance();
   const [slideOverTxId, setSlideOverTxId] = useState<string | null>(null);
   const [showSpendableSettings, setShowSpendableSettings] = useState(false);
 
-  const totals = useMemo(() => getTotals(accounts, transactions), [accounts, transactions]);
+  const totals = useMemo(() => getTotals(accounts, transactions, portfolioItems), [accounts, transactions, portfolioItems]);
   const avgs = useMemo(() => getAverages(accounts, transactions), [accounts, transactions]);
   const streaks = useMemo(() => getGamificationStreaks(accounts, transactions), [accounts, transactions]);
   const netWorthData = useMemo(() => getNetWorthChartData(accounts, transactions), [accounts, transactions]);

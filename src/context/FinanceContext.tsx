@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Account, Transaction, Recurring, Goal, Scenario, CustomReport, Budget, TransactionTemplate, Fund } from '../types';
+import { Account, Transaction, Recurring, Goal, Scenario, CustomReport, Budget, TransactionTemplate, Fund, PortfolioItem } from '../types';
 import { auth, db, signInWithGoogle, logout } from '../firebase';
 import { collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
@@ -27,6 +27,8 @@ interface FinanceContextType {
   setBudgets: (budgets: Budget[]) => Promise<void>;
   funds: Fund[];
   setFunds: (funds: Fund[]) => Promise<void>;
+  portfolioItems: PortfolioItem[];
+  setPortfolioItems: (items: PortfolioItem[]) => Promise<void>;
   spendableAccounts: string[];
   setSpendableAccounts: (accounts: string[]) => Promise<void>;
   templates: TransactionTemplate[];
@@ -97,6 +99,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const [goals, setGoalsState] = useState<Goal[]>([]);
   const [budgets, setBudgetsState] = useState<Budget[]>([]);
   const [funds, setFundsState] = useState<Fund[]>([]);
+  const [portfolioItems, setPortfolioItemsState] = useState<PortfolioItem[]>([]);
   const [spendableAccounts, setSpendableAccountsState] = useState<string[]>(() => {
     const saved = localStorage.getItem('fintrack_spendable_accounts');
     return saved ? JSON.parse(saved) : [];
@@ -127,6 +130,8 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
         setRecurringState([]);
         setGoalsState([]);
         setBudgetsState([]);
+        setFundsState([]);
+        setPortfolioItemsState([]);
         setTemplatesState([]);
         setActivityStreak(0);
       }
@@ -164,6 +169,10 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
     const unsubFunds = onSnapshot(collection(db, `users/${user.uid}/funds`), (snapshot) => {
       setFundsState(snapshot.docs.map(doc => doc.data() as Fund));
     }, (error) => handleFirestoreError(error, OperationType.GET, `users/${user.uid}/funds`));
+
+    const unsubPortfolio = onSnapshot(collection(db, `users/${user.uid}/portfolioItems`), (snapshot) => {
+      setPortfolioItemsState(snapshot.docs.map(doc => doc.data() as PortfolioItem));
+    }, (error) => handleFirestoreError(error, OperationType.GET, `users/${user.uid}/portfolioItems`));
 
     const unsubActivity = onSnapshot(doc(db, `users/${user.uid}/stats/activity`), (docSnap) => {
       if (docSnap.exists()) {
@@ -263,6 +272,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       unsubBudgets();
       unsubTemplates();
       unsubFunds();
+      unsubPortfolio();
       unsubActivity();
       unsubPreferences();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -376,6 +386,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const setBudgets = (bs: Budget[]) => syncCollection('budgets', budgets, bs);
   const setTemplates = (ts: TransactionTemplate[]) => syncCollection('templates', templates, ts);
   const setFunds = (fs: Fund[]) => syncCollection('funds', funds, fs);
+  const setPortfolioItems = (items: PortfolioItem[]) => syncCollection('portfolioItems', portfolioItems, items);
 
   const setSpendableAccounts = async (accs: string[]) => {
     setSpendableAccountsState(accs);
@@ -439,6 +450,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       goals, setGoals,
       budgets, setBudgets,
       funds, setFunds,
+      portfolioItems, setPortfolioItems,
       spendableAccounts, setSpendableAccounts,
       templates, setTemplates,
       showRecurringModal, setShowRecurringModal,

@@ -37,7 +37,7 @@ export const getAccountBalance = (
   return (account.type === 'asset' || account.type === 'expense') ? totalDebits - totalCredits : totalCredits - totalDebits;
 };
 
-export const getTotals = (accounts: Account[], transactions: Transaction[]) => {
+export const getTotals = (accounts: Account[], transactions: Transaction[], portfolioItems: any[] = []) => {
   let liquidAssets = 0, lockedAssets = 0, assets = 0, liabilities = 0, equity = 0, income = 0, expenses = 0;
   
   accounts.forEach(acc => {
@@ -52,6 +52,18 @@ export const getTotals = (accounts: Account[], transactions: Transaction[]) => {
     if (acc.type === 'income') income += bal;
     if (acc.type === 'expense') expenses += bal;
   });
+
+  const portfolioInvested = portfolioItems.reduce((sum, item) => sum + (item.investedAmount || 0), 0);
+  const portfolioCurrent = portfolioItems.reduce((sum, item) => sum + (item.currentValue || 0), 0);
+  const unrealizedGains = portfolioCurrent - portfolioInvested;
+  
+  // Apply unrealized gains to assets and locked assets (since investments are locked)
+  assets += unrealizedGains;
+  lockedAssets += unrealizedGains;
+  
+  // To maintain the double-entry accounting balance (Assets = Liabilities + Equity + Income - Expenses),
+  // Unrealized Gains must also be added to Equity
+  equity += unrealizedGains;
   
   return { 
     liquidAssets, 

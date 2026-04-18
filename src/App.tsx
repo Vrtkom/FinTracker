@@ -12,6 +12,7 @@ import { Accounts } from './views/Accounts';
 import { Journal } from './views/Journal';
 import { Analytics } from './views/Analytics';
 import { Budgets } from './views/Budgets';
+import { Portfolio } from './views/Portfolio';
 import { QuickAddButton } from './components/QuickAddButton';
 import { RecurringModal } from './components/Modals/RecurringModal';
 import { ManageRecurringModal } from './components/Modals/ManageRecurringModal';
@@ -101,6 +102,7 @@ const AppContent = () => {
       
       {activeTab === 'dashboard' && <Dashboard switchTab={setActiveTab} />}
       {activeTab === 'accounts' && <Accounts switchTab={setActiveTab} />}
+      {activeTab === 'portfolio' && <Portfolio />}
       {activeTab === 'transactions' && <Journal switchTab={setActiveTab} />}
       {activeTab === 'budgets' && <Budgets switchTab={setActiveTab} />}
       {activeTab === 'analytics' && <Analytics switchTab={setActiveTab} />}

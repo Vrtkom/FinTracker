@@ -9,9 +9,9 @@ import { Chart } from 'react-google-charts';
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 export const Reports = () => {
-  const { accounts, transactions, recurring, customReport, setCustomReport, scenario, setScenario } = useFinance();
+  const { accounts, transactions, recurring, customReport, setCustomReport, scenario, setScenario, portfolioItems } = useFinance();
   
-  const totals = useMemo(() => getTotals(accounts, transactions), [accounts, transactions]);
+  const totals = useMemo(() => getTotals(accounts, transactions, portfolioItems), [accounts, transactions, portfolioItems]);
 
   const genRows = (type: string, colorClass: string, bgClass: string, totalAmount: number) => {
     const acts = accounts.filter(a => a.type === type);
