@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency } from '../utils/finance';
-import { Plus, Trash2, Edit2, TrendingUp, TrendingDown, DollarSign, Briefcase, Activity, X, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Edit2, TrendingUp, TrendingDown, DollarSign, Briefcase, Activity, X, RefreshCw, PieChart as PieChartIcon } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export const Portfolio = () => {
   const { portfolioItems, setPortfolioItems, user, accounts, transactions, setTransactions } = useFinance();
@@ -36,6 +37,26 @@ export const Portfolio = () => {
   const totalCurrentValue = useMemo(() => portfolioItems.reduce((acc, item) => acc + (item.currentValue || 0), 0), [portfolioItems]);
   const totalProfit = totalCurrentValue - totalInvested;
   const profitPercentage = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
+
+  const allocationData = useMemo(() => {
+    const allocation = portfolioItems.reduce((acc, item) => {
+      acc[item.type] = (acc[item.type] || 0) + (item.currentValue || 0);
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(allocation)
+      .filter(([_, value]) => value > 0)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [portfolioItems]);
+
+  const COLORS: Record<string, string> = {
+    'Stock': '#3b82f6', // blue-500
+    'Mutual Fund': '#10b981', // emerald-500
+    'Fixed Deposit / RD': '#f59e0b', // amber-500
+    'Crypto': '#8b5cf6', // violet-500
+    'Other': '#64748b', // slate-500
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,8 +173,8 @@ export const Portfolio = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-slate-200 dark:border-gray-800 shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col justify-center">
           <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400 mb-2">
             <DollarSign className="w-4 h-4" /> Invested Value
           </div>
@@ -161,7 +182,7 @@ export const Portfolio = () => {
             {formatCurrency(totalInvested)}
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-slate-200 dark:border-gray-800 shadow-sm relative overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-slate-200 dark:border-gray-800 shadow-sm relative overflow-hidden flex flex-col justify-center">
           <div className="absolute -right-4 -bottom-4 text-emerald-500/10 dark:text-emerald-400/5">
             <TrendingUp className="w-32 h-32" />
           </div>
@@ -174,7 +195,7 @@ export const Portfolio = () => {
             </div>
           </div>
         </div>
-        <div className={`rounded-2xl p-6 border shadow-sm ${totalProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/30' : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30'}`}>
+        <div className={`rounded-2xl p-6 border shadow-sm flex flex-col justify-center ${totalProfit >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/30' : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/30'}`}>
           <div className={`flex items-center gap-2 mb-2 ${totalProfit >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
             {totalProfit >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />} Total Return
           </div>
@@ -185,6 +206,72 @@ export const Portfolio = () => {
             <span className={`text-sm font-semibold px-2 py-0.5 rounded-full ${totalProfit >= 0 ? 'bg-emerald-200/50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-red-200/50 dark:bg-red-900/40 text-red-700 dark:text-red-300'}`}>
               {totalProfit >= 0 ? '+' : ''}{profitPercentage.toFixed(2)}%
             </span>
+          </div>
+        </div>
+
+        {/* Allocation Chart Card */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col">
+          <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400 mb-2 pl-2">
+            <PieChartIcon className="w-4 h-4" /> Asset Allocation
+          </div>
+          <div className="flex-1 w-full h-full min-h-[120px] flex items-center">
+            {allocationData.length > 0 ? (
+              <>
+                <div className="w-1/2 h-full min-h-[120px] relative">
+                  <div className="absolute inset-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={allocationData}
+                          innerRadius={28}
+                          outerRadius={45}
+                          paddingAngle={3}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {allocationData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[entry.name] || COLORS['Other']} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value: number) => {
+                            const pct = totalCurrentValue > 0 ? ((value / totalCurrentValue) * 100).toFixed(1) : 0;
+                            return [`${formatCurrency(value)} (${pct}%)`, 'Value'];
+                          }}
+                          contentStyle={{ borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '12px' }}
+                          itemStyle={{ color: '#fff' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="w-1/2 flex flex-col justify-center gap-2">
+                  {allocationData.slice(0, 3).map(entry => {
+                    const pct = totalCurrentValue > 0 ? Math.round((entry.value / totalCurrentValue) * 100) : 0;
+                    return (
+                      <div key={entry.name} className="flex items-center justify-between text-xs pr-1">
+                        <div className="flex items-center gap-1.5 overflow-hidden">
+                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[entry.name] || COLORS['Other']}}></div>
+                          <span className="text-slate-600 dark:text-gray-300 truncate">{entry.name}</span>
+                        </div>
+                        <span className="font-bold text-slate-900 dark:text-white shrink-0 ml-1">
+                          {pct}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {allocationData.length > 3 && (
+                     <div className="text-[10px] text-slate-400 pl-4 mt-1 font-medium">
+                       + {allocationData.length - 3} more
+                     </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="w-full flex items-center justify-center text-xs text-slate-400 text-center font-medium">
+                No active assets
+              </div>
+            )}
           </div>
         </div>
       </div>

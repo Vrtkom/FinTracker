@@ -53,6 +53,19 @@ export const getTotals = (accounts: Account[], transactions: Transaction[], port
     if (acc.type === 'expense') expenses += bal;
   });
 
+  // Handle orphaned transaction sides (e.g., 'PENDING' accounts or deleted accounts)
+  // This automatically sweeps missing amounts into Equity to prevent imbalancing the ledger
+  const todayStr = new Date().toISOString().split('T')[0];
+  transactions.forEach(t => {
+    if (t.date > todayStr) return; 
+    
+    const debitAcc = accounts.find(a => a.id === t.debitAccount);
+    const creditAcc = accounts.find(a => a.id === t.creditAccount);
+
+    if (!debitAcc) equity -= t.amount;
+    if (!creditAcc) equity += t.amount;
+  });
+
   const portfolioInvested = portfolioItems.reduce((sum, item) => sum + (item.investedAmount || 0), 0);
   const portfolioCurrent = portfolioItems.reduce((sum, item) => sum + (item.currentValue || 0), 0);
   const unrealizedGains = portfolioCurrent - portfolioInvested;
