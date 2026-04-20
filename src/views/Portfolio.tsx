@@ -32,6 +32,7 @@ export const Portfolio = () => {
   const [linkToAccountId, setLinkToAccountId] = useState('');
   
   const [filter, setFilter] = useState('All');
+  const [stockChartMetric, setStockChartMetric] = useState<'value' | 'quantity'>('value');
 
   const inputClasses = "w-full px-4 py-3 bg-slate-50 dark:bg-gray-800/50 border border-slate-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none text-slate-800 dark:text-white transition-all disabled:opacity-50";
 
@@ -56,12 +57,18 @@ export const Portfolio = () => {
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
     } else {
+      const useQuantity = filter === 'Stock' && stockChartMetric === 'quantity';
       return filteredPortfolioItems
-        .filter(item => item.currentValue > 0)
-        .map(item => ({ name: item.name, value: item.currentValue }))
+        .filter(item => useQuantity ? (item.quantity || 0) > 0 : (item.currentValue || 0) > 0)
+        .map(item => ({ 
+          name: item.name, 
+          value: useQuantity ? (item.quantity || 0) : (item.currentValue || 0) 
+        }))
         .sort((a, b) => b.value - a.value);
     }
-  }, [filteredPortfolioItems, filter]);
+  }, [filteredPortfolioItems, filter, stockChartMetric]);
+
+  const totalAllocationValue = useMemo(() => allocationData.reduce((sum, item) => sum + item.value, 0), [allocationData]);
 
   const COLORS: Record<string, string> = {
     'Stock': '#3b82f6', // blue-500
@@ -244,8 +251,26 @@ export const Portfolio = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Allocation Chart Card */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col min-h-[220px]">
-          <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400 mb-2 pl-2">
-            <PieChartIcon className="w-4 h-4" /> Asset Allocation
+          <div className="flex items-center justify-between mb-2 pl-2">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400">
+              <PieChartIcon className="w-4 h-4" /> Asset Allocation
+            </div>
+            {filter === 'Stock' && (
+              <div className="flex bg-slate-100 dark:bg-gray-800 rounded-lg p-0.5">
+                <button 
+                  onClick={() => setStockChartMetric('value')}
+                  className={`px-2 py-1 text-[10px] font-bold rounded-md transition-colors ${stockChartMetric === 'value' ? 'bg-white dark:bg-gray-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-gray-400'}`}
+                >
+                  Value
+                </button>
+                <button 
+                  onClick={() => setStockChartMetric('quantity')}
+                  className={`px-2 py-1 text-[10px] font-bold rounded-md transition-colors ${stockChartMetric === 'quantity' ? 'bg-white dark:bg-gray-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-gray-400'}`}
+                >
+                  Quantity
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex-1 w-full h-full flex flex-col justify-center gap-4 py-2">
             {allocationData.length > 0 ? (
@@ -268,8 +293,10 @@ export const Portfolio = () => {
                         </Pie>
                         <Tooltip 
                           formatter={(value: number) => {
-                            const pct = totalCurrentValue > 0 ? ((value / totalCurrentValue) * 100).toFixed(1) : 0;
-                            return [`${formatCurrency(value)} (${pct}%)`, 'Value'];
+                            const pct = totalAllocationValue > 0 ? ((value / totalAllocationValue) * 100).toFixed(1) : 0;
+                            const useQuantity = filter === 'Stock' && stockChartMetric === 'quantity';
+                            const formattedVal = useQuantity ? value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : formatCurrency(value);
+                            return [`${formattedVal} (${pct}%)`, useQuantity ? 'Quantity' : 'Value'];
                           }}
                           contentStyle={{ borderRadius: '8px', border: 'none', background: '#1e293b', color: '#fff', fontSize: '12px' }}
                           itemStyle={{ color: '#fff' }}
@@ -280,7 +307,7 @@ export const Portfolio = () => {
                 </div>
                 <div className="w-full flex justify-center gap-4 flex-wrap">
                   {allocationData.slice(0, 4).map((entry, index) => {
-                    const pct = totalCurrentValue > 0 ? Math.round((entry.value / totalCurrentValue) * 100) : 0;
+                    const pct = totalAllocationValue > 0 ? Math.round((entry.value / totalAllocationValue) * 100) : 0;
                     return (
                       <div key={entry.name} className="flex items-center gap-1.5 text-xs">
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getPieColor(entry.name, index)}}></div>
