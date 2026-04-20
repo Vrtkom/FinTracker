@@ -68,7 +68,8 @@ service cloud.firestore {
     }
     
     function isDocOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.uid;
+      return isAuthenticated() && 
+             (!('uid' in resource.data) || request.auth.uid == resource.data.uid);
     }
     
     function uidUnchanged() {
@@ -76,7 +77,9 @@ service cloud.firestore {
     }
     
     function uidNotModified() {
-      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+      return !('uid' in request.resource.data) || 
+             !('uid' in resource.data) || 
+             request.resource.data.uid == resource.data.uid;
     }
     
     function hasRequiredFields(fields) {

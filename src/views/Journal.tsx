@@ -336,6 +336,7 @@ export const Journal = ({ switchTab }: { switchTab?: (tab: string) => void }) =>
       setTransactions([...transactions, ...newTxs]);
     } else {
       const amount = parseFloat(txAmount);
+      if (isNaN(amount) || amount <= 0) return alert("Please enter a valid amount greater than 0.");
       
       if (!txDebit || !txCredit) return alert("Please select valid accounts from the dropdown.");
       if (txDebit === txCredit) return alert("Debit and Credit accounts cannot be the same.");
