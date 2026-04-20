@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency } from '../utils/finance';
 import { Plus, Trash2, Edit2, TrendingUp, TrendingDown, DollarSign, Briefcase, Activity, X, RefreshCw, PieChart as PieChartIcon } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const Portfolio = () => {
   const { portfolioItems, setPortfolioItems, user, accounts, transactions, setTransactions } = useFinance();
@@ -30,25 +30,38 @@ export const Portfolio = () => {
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
   const [linkToAccountId, setLinkToAccountId] = useState('');
+  
+  const [filter, setFilter] = useState('All');
 
   const inputClasses = "w-full px-4 py-3 bg-slate-50 dark:bg-gray-800/50 border border-slate-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none text-slate-800 dark:text-white transition-all disabled:opacity-50";
 
-  const totalInvested = useMemo(() => portfolioItems.reduce((acc, item) => acc + (item.investedAmount || 0), 0), [portfolioItems]);
-  const totalCurrentValue = useMemo(() => portfolioItems.reduce((acc, item) => acc + (item.currentValue || 0), 0), [portfolioItems]);
+  const filteredPortfolioItems = useMemo(() => {
+    if (filter === 'All') return portfolioItems;
+    return portfolioItems.filter(item => item.type === filter);
+  }, [portfolioItems, filter]);
+
+  const totalInvested = useMemo(() => filteredPortfolioItems.reduce((acc, item) => acc + (item.investedAmount || 0), 0), [filteredPortfolioItems]);
+  const totalCurrentValue = useMemo(() => filteredPortfolioItems.reduce((acc, item) => acc + (item.currentValue || 0), 0), [filteredPortfolioItems]);
   const totalProfit = totalCurrentValue - totalInvested;
   const profitPercentage = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
 
   const allocationData = useMemo(() => {
-    const allocation = portfolioItems.reduce((acc, item) => {
-      acc[item.type] = (acc[item.type] || 0) + (item.currentValue || 0);
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(allocation)
-      .filter(([_, value]) => value > 0)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [portfolioItems]);
+    if (filter === 'All') {
+      const allocation = filteredPortfolioItems.reduce((acc, item) => {
+        acc[item.type] = (acc[item.type] || 0) + (item.currentValue || 0);
+        return acc;
+      }, {} as Record<string, number>);
+      return Object.entries(allocation)
+        .filter(([_, value]) => value > 0)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value);
+    } else {
+      return filteredPortfolioItems
+        .filter(item => item.currentValue > 0)
+        .map(item => ({ name: item.name, value: item.currentValue }))
+        .sort((a, b) => b.value - a.value);
+    }
+  }, [filteredPortfolioItems, filter]);
 
   const COLORS: Record<string, string> = {
     'Stock': '#3b82f6', // blue-500
@@ -56,6 +69,12 @@ export const Portfolio = () => {
     'Fixed Deposit / RD': '#f59e0b', // amber-500
     'Crypto': '#8b5cf6', // violet-500
     'Other': '#64748b', // slate-500
+  };
+
+  const getPieColor = (name: string, index: number) => {
+    if (filter === 'All') return COLORS[name] || COLORS['Other'];
+    const PALETTE = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#eab308'];
+    return PALETTE[index % PALETTE.length];
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -173,7 +192,19 @@ export const Portfolio = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        {['All', 'Stock', 'Mutual Fund', 'Fixed Deposit / RD', 'Crypto', 'Other'].map(f => (
+          <button 
+            key={f} 
+            onClick={() => setFilter(f)} 
+            className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${filter === f ? 'bg-blue-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 text-slate-600 dark:text-gray-300 border border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700'}`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col justify-center">
           <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400 mb-2">
             <DollarSign className="w-4 h-4" /> Invested Value
@@ -208,29 +239,31 @@ export const Portfolio = () => {
             </span>
           </div>
         </div>
+      </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Allocation Chart Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col min-h-[220px]">
           <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400 mb-2 pl-2">
             <PieChartIcon className="w-4 h-4" /> Asset Allocation
           </div>
-          <div className="flex-1 w-full h-full min-h-[120px] flex items-center">
+          <div className="flex-1 w-full h-full flex flex-col justify-center gap-4 py-2">
             {allocationData.length > 0 ? (
               <>
-                <div className="w-1/2 h-full min-h-[120px] relative">
+                <div className="w-full h-32 relative">
                   <div className="absolute inset-0">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={allocationData}
-                          innerRadius={28}
-                          outerRadius={45}
+                          innerRadius={36}
+                          outerRadius={56}
                           paddingAngle={3}
                           dataKey="value"
                           stroke="none"
                         >
                           {allocationData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[entry.name] || COLORS['Other']} />
+                            <Cell key={`cell-${index}`} fill={getPieColor(entry.name, index)} />
                           ))}
                         </Pie>
                         <Tooltip 
@@ -245,30 +278,28 @@ export const Portfolio = () => {
                     </ResponsiveContainer>
                   </div>
                 </div>
-                <div className="w-1/2 flex flex-col justify-center gap-2">
-                  {allocationData.slice(0, 3).map(entry => {
+                <div className="w-full flex justify-center gap-4 flex-wrap">
+                  {allocationData.slice(0, 4).map((entry, index) => {
                     const pct = totalCurrentValue > 0 ? Math.round((entry.value / totalCurrentValue) * 100) : 0;
                     return (
-                      <div key={entry.name} className="flex items-center justify-between text-xs pr-1">
-                        <div className="flex items-center gap-1.5 overflow-hidden">
-                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[entry.name] || COLORS['Other']}}></div>
-                          <span className="text-slate-600 dark:text-gray-300 truncate">{entry.name}</span>
-                        </div>
-                        <span className="font-bold text-slate-900 dark:text-white shrink-0 ml-1">
+                      <div key={entry.name} className="flex items-center gap-1.5 text-xs">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getPieColor(entry.name, index)}}></div>
+                        <span className="text-slate-600 dark:text-gray-300 max-w-[80px] truncate">{entry.name}</span>
+                        <span className="font-bold text-slate-900 dark:text-white shrink-0">
                           {pct}%
                         </span>
                       </div>
                     );
                   })}
-                  {allocationData.length > 3 && (
-                     <div className="text-[10px] text-slate-400 pl-4 mt-1 font-medium">
-                       + {allocationData.length - 3} more
+                  {allocationData.length > 4 && (
+                     <div className="text-xs text-slate-400 font-medium flex items-center">
+                       + {allocationData.length - 4} more
                      </div>
                   )}
                 </div>
               </>
             ) : (
-              <div className="w-full flex items-center justify-center text-xs text-slate-400 text-center font-medium">
+              <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 text-center font-medium">
                 No active assets
               </div>
             )}
@@ -277,7 +308,7 @@ export const Portfolio = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-900 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm overflow-hidden">
-        {portfolioItems.length === 0 ? (
+        {filteredPortfolioItems.length === 0 ? (
           <div className="p-12 text-center">
             <Briefcase className="w-16 h-16 text-slate-300 dark:text-gray-700 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">No investments yet</h3>
@@ -299,7 +330,7 @@ export const Portfolio = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-gray-800">
-                {portfolioItems.map(item => {
+                {filteredPortfolioItems.map(item => {
                   const profit = item.currentValue - item.investedAmount;
                   const pct = item.investedAmount > 0 ? (profit / item.investedAmount) * 100 : 0;
                   return (
