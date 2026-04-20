@@ -248,10 +248,10 @@ export const Portfolio = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Allocation Chart Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col min-h-[220px]">
-          <div className="flex items-center justify-between mb-2 pl-2">
+      {/* Allocation Chart Card Container - Expanded for Desktop */}
+      <div className="w-full lg:max-w-4xl mb-6">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-slate-200 dark:border-gray-800 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-3 pl-2">
             <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400">
               <PieChartIcon className="w-4 h-4" /> Asset Allocation
             </div>
@@ -272,17 +272,17 @@ export const Portfolio = () => {
               </div>
             )}
           </div>
-          <div className="flex-1 w-full h-full flex flex-col justify-center gap-4 py-2">
+          <div className="flex-1 w-full flex flex-col md:flex-row items-center justify-start gap-4 md:gap-8 py-2">
             {allocationData.length > 0 ? (
               <>
-                <div className="w-full h-32 relative">
+                <div className="w-full md:w-2/5 h-32 md:h-48 relative">
                   <div className="absolute inset-0">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={allocationData}
-                          innerRadius={36}
-                          outerRadius={56}
+                          innerRadius="60%"
+                          outerRadius="80%"
                           paddingAngle={3}
                           dataKey="value"
                           stroke="none"
@@ -305,7 +305,8 @@ export const Portfolio = () => {
                     </ResponsiveContainer>
                   </div>
                 </div>
-                <div className="w-full flex justify-center gap-4 flex-wrap">
+                {/* Mobile Legend - Hidden on Desktop */}
+                <div className="w-full flex md:hidden justify-center gap-4 flex-wrap">
                   {allocationData.slice(0, 4).map((entry, index) => {
                     const pct = totalAllocationValue > 0 ? Math.round((entry.value / totalAllocationValue) * 100) : 0;
                     return (
@@ -324,9 +325,34 @@ export const Portfolio = () => {
                      </div>
                   )}
                 </div>
+                {/* Desktop Legend Cards - Hidden on Mobile */}
+                <div className="hidden md:grid w-full md:w-3/5 grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-gray-700">
+                  {allocationData.map((entry, index) => {
+                    const pct = totalAllocationValue > 0 ? ((entry.value / totalAllocationValue) * 100).toFixed(1) : 0;
+                    const useQuantity = filter === 'Stock' && stockChartMetric === 'quantity';
+                    const formattedVal = useQuantity ? entry.value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : formatCurrency(entry.value);
+
+                    return (
+                      <div key={entry.name} className="flex flex-col p-3 rounded-lg bg-slate-50 dark:bg-gray-800/50 border border-slate-100 dark:border-gray-700/50 transition-colors hover:bg-slate-100 dark:hover:bg-gray-800">
+                        <div className="flex items-center gap-2 mb-1.5">
+                           <div className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: getPieColor(entry.name, index)}}></div>
+                           <span className="text-xs font-semibold text-slate-700 dark:text-gray-300 truncate">{entry.name}</span>
+                        </div>
+                        <div className="flex items-end justify-between mt-auto">
+                           <span className="text-sm font-bold text-slate-900 dark:text-white truncate pr-2">
+                             {formattedVal}
+                           </span>
+                           <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-slate-200/50 dark:bg-gray-700/50 text-slate-600 dark:text-gray-300 rounded shrink-0">
+                             {pct}%
+                           </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 text-center font-medium">
+              <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 text-center font-medium py-10">
                 No active assets
               </div>
             )}
