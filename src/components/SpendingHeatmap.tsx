@@ -1,16 +1,24 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { useFinance } from '../context/FinanceContext';
-import { startOfYear, endOfYear, eachDayOfInterval, format, parseISO } from 'date-fns';
+import React, { useMemo, useState, useEffect } from "react";
+import { useFinance } from "../context/FinanceContext";
+import {
+  startOfYear,
+  endOfYear,
+  eachDayOfInterval,
+  format,
+  parseISO,
+} from "date-fns";
 
-export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void }> = ({ onDayClick }) => {
+export const SpendingHeatmap: React.FC<{
+  onDayClick?: (dateStr: string) => void;
+}> = ({ onDayClick }) => {
   const { transactions, accounts } = useFinance();
   const [threshold, setThreshold] = useState<number>(() => {
-    const saved = localStorage.getItem('spendingHeatmapThreshold');
+    const saved = localStorage.getItem("spendingHeatmapThreshold");
     return saved !== null ? Number(saved) : 1000;
   });
 
   useEffect(() => {
-    localStorage.setItem('spendingHeatmapThreshold', threshold.toString());
+    localStorage.setItem("spendingHeatmapThreshold", threshold.toString());
   }, [threshold]);
 
   const heatmapData = useMemo(() => {
@@ -21,18 +29,23 @@ export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void 
 
     const dailySpending = new Map<string, number>();
     const dailyActivity = new Set<string>();
-    const expenseAccounts = new Set(accounts.filter(a => a.type === 'expense').map(a => a.id));
-    
+    const expenseAccounts = new Set(
+      accounts.filter((a) => a.type === "expense").map((a) => a.id),
+    );
+
     // Calculate spending per day and track activity
-    transactions.forEach(t => {
+    transactions.forEach((t) => {
       try {
         const parsedDate = parseISO(t.date);
         if (!isNaN(parsedDate.getTime())) {
-          const dateStr = format(parsedDate, 'yyyy-MM-dd');
+          const dateStr = format(parsedDate, "yyyy-MM-dd");
           dailyActivity.add(dateStr); // Mark day as active
-          
+
           if (expenseAccounts.has(t.debitAccount)) {
-            dailySpending.set(dateStr, (dailySpending.get(dateStr) || 0) + t.amount);
+            dailySpending.set(
+              dateStr,
+              (dailySpending.get(dateStr) || 0) + t.amount,
+            );
           }
         }
       } catch (e) {
@@ -42,40 +55,44 @@ export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void 
 
     // Find max spending for color scaling
     let maxSpending = 0;
-    dailySpending.forEach(amount => {
+    dailySpending.forEach((amount) => {
       if (amount > maxSpending) maxSpending = amount;
     });
 
     const maxRedDiff = Math.max(maxSpending - threshold, 1); // Avoid division by zero
     const maxGreenDiff = threshold > 0 ? threshold : 1;
 
-    return days.map(day => {
-      const dateStr = format(day, 'yyyy-MM-dd');
+    return days.map((day) => {
+      const dateStr = format(day, "yyyy-MM-dd");
       const amount = dailySpending.get(dateStr) || 0;
       const isActive = dailyActivity.has(dateStr);
-      
+
       // Default to grey for inactive days
-      let colorClass = 'bg-slate-100 dark:bg-gray-800'; 
-      
+      let colorClass = "bg-slate-100 dark:bg-gray-800";
+
       if (isActive) {
         if (amount > threshold) {
           // Red scale: intensity based on absolute diff above threshold
           const diff = amount - threshold;
           const intensity = diff / maxRedDiff;
-          if (intensity < 0.2) colorClass = 'bg-red-200 dark:bg-red-950';
-          else if (intensity < 0.4) colorClass = 'bg-red-300 dark:bg-red-900';
-          else if (intensity < 0.6) colorClass = 'bg-red-400 dark:bg-red-800';
-          else if (intensity < 0.8) colorClass = 'bg-red-500 dark:bg-red-700';
-          else colorClass = 'bg-red-600 dark:bg-red-600';
+          if (intensity < 0.2) colorClass = "bg-red-200 dark:bg-red-950";
+          else if (intensity < 0.4) colorClass = "bg-red-300 dark:bg-red-900";
+          else if (intensity < 0.6) colorClass = "bg-red-400 dark:bg-red-800";
+          else if (intensity < 0.8) colorClass = "bg-red-500 dark:bg-red-700";
+          else colorClass = "bg-red-600 dark:bg-red-600";
         } else {
           // Green scale: intensity based on absolute diff below threshold
           const diff = threshold - amount;
           const intensity = diff / maxGreenDiff;
-          if (intensity < 0.2) colorClass = 'bg-emerald-100 dark:bg-emerald-950';
-          else if (intensity < 0.4) colorClass = 'bg-emerald-200 dark:bg-emerald-900';
-          else if (intensity < 0.6) colorClass = 'bg-emerald-300 dark:bg-emerald-800';
-          else if (intensity < 0.8) colorClass = 'bg-emerald-400 dark:bg-emerald-700';
-          else colorClass = 'bg-emerald-500 dark:bg-emerald-600';
+          if (intensity < 0.2)
+            colorClass = "bg-emerald-100 dark:bg-emerald-950";
+          else if (intensity < 0.4)
+            colorClass = "bg-emerald-200 dark:bg-emerald-900";
+          else if (intensity < 0.6)
+            colorClass = "bg-emerald-300 dark:bg-emerald-800";
+          else if (intensity < 0.8)
+            colorClass = "bg-emerald-400 dark:bg-emerald-700";
+          else colorClass = "bg-emerald-500 dark:bg-emerald-600";
         }
       }
 
@@ -84,7 +101,7 @@ export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void 
         dateStr,
         amount,
         isActive,
-        colorClass
+        colorClass,
       };
     });
   }, [transactions, accounts, threshold]);
@@ -92,8 +109,8 @@ export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void 
   // Group by months for display
   const months = useMemo(() => {
     const grouped: { [key: string]: typeof heatmapData } = {};
-    heatmapData.forEach(day => {
-      const month = format(day.date, 'MMM');
+    heatmapData.forEach((day) => {
+      const month = format(day.date, "MMM");
       if (!grouped[month]) grouped[month] = [];
       grouped[month].push(day);
     });
@@ -105,32 +122,44 @@ export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void 
   const weeks = useMemo(() => {
     const weeksArray: (typeof heatmapData)[] = [];
     let currentWeek: typeof heatmapData = [];
-    
-    heatmapData.forEach(day => {
+
+    heatmapData.forEach((day) => {
       if (currentWeek.length === 0) {
         // Pad the first week if the year doesn't start on Sunday
         const dayOfWeek = day.date.getDay();
         for (let i = 0; i < dayOfWeek; i++) {
-          currentWeek.push({ date: new Date(0), dateStr: '', amount: 0, isActive: false, colorClass: 'bg-transparent' });
+          currentWeek.push({
+            date: new Date(0),
+            dateStr: "",
+            amount: 0,
+            isActive: false,
+            colorClass: "bg-transparent",
+          });
         }
       }
-      
+
       currentWeek.push(day);
-      
+
       if (currentWeek.length === 7) {
         weeksArray.push(currentWeek);
         currentWeek = [];
       }
     });
-    
+
     if (currentWeek.length > 0) {
       // Pad the last week
       while (currentWeek.length < 7) {
-        currentWeek.push({ date: new Date(0), dateStr: '', amount: 0, isActive: false, colorClass: 'bg-transparent' });
+        currentWeek.push({
+          date: new Date(0),
+          dateStr: "",
+          amount: 0,
+          isActive: false,
+          colorClass: "bg-transparent",
+        });
       }
       weeksArray.push(currentWeek);
     }
-    
+
     return weeksArray;
   }, [heatmapData]);
 
@@ -146,7 +175,10 @@ export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void 
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <label htmlFor="threshold" className="text-sm font-medium text-slate-700 dark:text-gray-300">
+          <label
+            htmlFor="threshold"
+            className="text-sm font-medium text-slate-700 dark:text-gray-300"
+          >
             Daily Target (₹):
           </label>
           <input
@@ -178,15 +210,19 @@ export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void 
 
             {/* Cells */}
             {weeks.map((week, weekIndex) => {
-              const firstValidDay = week.find(d => d.dateStr !== '');
+              const firstValidDay = week.find((d) => d.dateStr !== "");
               let monthLabel = null;
-              
+
               if (firstValidDay) {
-                const month = format(firstValidDay.date, 'MMM');
+                const month = format(firstValidDay.date, "MMM");
                 const prevWeek = weeks[weekIndex - 1];
-                const prevFirstValidDay = prevWeek?.find(d => d.dateStr !== '');
-                const prevMonth = prevFirstValidDay ? format(prevFirstValidDay.date, 'MMM') : null;
-                
+                const prevFirstValidDay = prevWeek?.find(
+                  (d) => d.dateStr !== "",
+                );
+                const prevMonth = prevFirstValidDay
+                  ? format(prevFirstValidDay.date, "MMM")
+                  : null;
+
                 if (month !== prevMonth) {
                   monthLabel = month;
                 }
@@ -207,15 +243,19 @@ export const SpendingHeatmap: React.FC<{ onDayClick?: (dateStr: string) => void 
                           onDayClick(day.dateStr);
                         }
                       }}
-                      className={`w-3 h-3 md:w-4 md:h-4 rounded-sm ${day.colorClass} ${day.dateStr ? 'cursor-pointer hover:ring-2 hover:ring-slate-400 dark:hover:ring-gray-500 transition-all' : ''}`}
-                      title={day.dateStr ? `${format(day.date, 'MMM d, yyyy')}: ₹${day.amount.toFixed(2)}` : ''}
+                      className={`w-3 h-3 md:w-4 md:h-4 rounded-sm ${day.colorClass} ${day.dateStr ? "cursor-pointer hover:ring-2 hover:ring-slate-400 dark:hover:ring-gray-500 transition-all" : ""}`}
+                      title={
+                        day.dateStr
+                          ? `${format(day.date, "MMM d, yyyy")}: ₹${day.amount.toFixed(2)}`
+                          : ""
+                      }
                     />
                   ))}
                 </div>
               );
             })}
           </div>
-          
+
           {/* Legend */}
           <div className="flex items-center justify-end gap-2 mt-4 text-xs text-slate-500 dark:text-gray-400">
             <span>No Activity</span>

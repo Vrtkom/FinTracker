@@ -5,11 +5,16 @@ let aiClient: GoogleGenAI | null = null;
 const getAIClient = () => {
   if (!aiClient) {
     // You can paste your API key here if you want to hardcode it
-    const hardcodedKey = "AIzaSyBRhhFbQMsVtM-MQNe97LKIfJqPgXLY04A"; 
-    const apiKey = hardcodedKey || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-    
+    const hardcodedKey = "AIzaSyBRhhFbQMsVtM-MQNe97LKIfJqPgXLY04A";
+    const apiKey =
+      hardcodedKey ||
+      process.env.GEMINI_API_KEY ||
+      (import.meta as any).env?.VITE_GEMINI_API_KEY;
+
     if (!apiKey) {
-      throw new Error("Gemini API Key is missing. Please set it in your environment variables or hardcode it.");
+      throw new Error(
+        "Gemini API Key is missing. Please set it in your environment variables or hardcode it.",
+      );
     }
     aiClient = new GoogleGenAI({ apiKey });
   }
@@ -18,12 +23,12 @@ const getAIClient = () => {
 
 export const parseReceipt = async (
   base64Image: string,
-  accounts: { id: string, name: string, type: string }[]
+  accounts: { id: string; name: string; type: string }[],
 ) => {
   try {
     // Remove the data:image/jpeg;base64, prefix
-    const base64Data = base64Image.split(',')[1];
-    const mimeType = base64Image.split(';')[0].split(':')[1];
+    const base64Data = base64Image.split(",")[1];
+    const mimeType = base64Image.split(";")[0].split(":")[1];
 
     const ai = getAIClient();
     const response = await ai.models.generateContent({
@@ -32,13 +37,13 @@ export const parseReceipt = async (
         {
           inlineData: {
             data: base64Data,
-            mimeType: mimeType
-          }
+            mimeType: mimeType,
+          },
         },
         `Extract transaction details from this receipt.
         
         Available accounts:
-        ${accounts.map(a => `- ${a.name} (ID: ${a.id}, Type: ${a.type})`).join('\n')}
+        ${accounts.map((a) => `- ${a.name} (ID: ${a.id}, Type: ${a.type})`).join("\n")}
         
         Return a JSON object with the following fields:
         - amount: number (total amount)
@@ -47,7 +52,7 @@ export const parseReceipt = async (
         - debitAccount: string (the ID of the expense account that best matches the items bought)
         - tags: array of strings (e.g. ["food", "groceries"])
         - intent: string (one of "need", "want", "investment", "transfer", or null)
-        `
+        `,
       ],
       config: {
         responseMimeType: "application/json",
@@ -59,11 +64,11 @@ export const parseReceipt = async (
             date: { type: Type.STRING },
             debitAccount: { type: Type.STRING },
             tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-            intent: { type: Type.STRING }
+            intent: { type: Type.STRING },
           },
-          required: ["amount", "description"]
-        }
-      }
+          required: ["amount", "description"],
+        },
+      },
     });
 
     const jsonStr = response.text?.trim();
@@ -77,8 +82,8 @@ export const parseReceipt = async (
   }
 };
 export const parseNaturalLanguageTransaction = async (
-  text: string, 
-  accounts: { id: string, name: string, type: string }[]
+  text: string,
+  accounts: { id: string; name: string; type: string }[],
 ) => {
   try {
     const ai = getAIClient();
@@ -87,7 +92,7 @@ export const parseNaturalLanguageTransaction = async (
       contents: `Parse the following natural language transaction into structured data.
       
       Available accounts:
-      ${accounts.map(a => `- ${a.name} (ID: ${a.id}, Type: ${a.type})`).join('\n')}
+      ${accounts.map((a) => `- ${a.name} (ID: ${a.id}, Type: ${a.type})`).join("\n")}
       
       Transaction text: "${text}"
       
@@ -113,11 +118,11 @@ export const parseNaturalLanguageTransaction = async (
             debitAccount: { type: Type.STRING },
             creditAccount: { type: Type.STRING },
             tags: { type: Type.ARRAY, items: { type: Type.STRING } },
-            intent: { type: Type.STRING }
+            intent: { type: Type.STRING },
           },
-          required: ["amount", "description"]
-        }
-      }
+          required: ["amount", "description"],
+        },
+      },
     });
 
     const jsonStr = response.text?.trim();

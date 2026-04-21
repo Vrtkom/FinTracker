@@ -7,13 +7,19 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "type": { "type": "string", "enum": ["asset", "liability", "equity", "income", "expense"] },
+        "type": {
+          "type": "string",
+          "enum": ["asset", "liability", "equity", "income", "expense"]
+        },
         "liquidity": { "type": "string", "enum": ["liquid", "invested"] },
         "expenseType": { "type": "string", "enum": ["need", "want"] },
         "budget": { "type": "number" },
         "excludeFromForecast": { "type": "boolean" },
         "isArchived": { "type": "boolean" },
-        "pots": { "type": "string", "description": "JSON stringified array of pots" },
+        "pots": {
+          "type": "string",
+          "description": "JSON stringified array of pots"
+        },
         "uid": { "type": "string" }
       },
       "required": ["id", "name", "type", "isArchived", "uid"]
@@ -33,7 +39,16 @@
         "receipt": { "type": "string" },
         "uid": { "type": "string" }
       },
-      "required": ["id", "date", "description", "amount", "debitAccount", "creditAccount", "cleared", "uid"]
+      "required": [
+        "id",
+        "date",
+        "description",
+        "amount",
+        "debitAccount",
+        "creditAccount",
+        "cleared",
+        "uid"
+      ]
     },
     "Recurring": {
       "title": "Recurring",
@@ -48,7 +63,15 @@
         "day": { "type": "number" },
         "uid": { "type": "string" }
       },
-      "required": ["id", "description", "amount", "debitAccount", "creditAccount", "day", "uid"]
+      "required": [
+        "id",
+        "description",
+        "amount",
+        "debitAccount",
+        "creditAccount",
+        "day",
+        "uid"
+      ]
     },
     "Goal": {
       "title": "Goal",
@@ -91,7 +114,15 @@
         "merchant": { "type": "string" },
         "uid": { "type": "string" }
       },
-      "required": ["id", "name", "description", "amount", "debitAccount", "creditAccount", "uid"]
+      "required": [
+        "id",
+        "name",
+        "description",
+        "amount",
+        "debitAccount",
+        "creditAccount",
+        "uid"
+      ]
     },
     "Fund": {
       "title": "Fund",

@@ -1,6 +1,11 @@
-export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
-export type Liquidity = 'liquid' | 'invested';
-export type TransactionIntent = 'need' | 'want' | 'investment' | 'transfer';
+export type AccountType =
+  | "asset"
+  | "liability"
+  | "equity"
+  | "income"
+  | "expense";
+export type Liquidity = "liquid" | "invested";
+export type TransactionIntent = "need" | "want" | "investment" | "transfer";
 
 export interface Pot {
   id: string;
@@ -82,10 +87,11 @@ export interface PortfolioItem {
   id: string;
   name: string;
   type: string; // e.g., 'Stock', 'Mutual Fund', 'RD', 'Other'
-  investmentType?: 'sip' | 'one-time' | 'sip+'; // Specific to MFs mostly
+  investmentType?: "sip" | "one-time" | "sip+"; // Specific to MFs mostly
   investedAmount: number;
   currentValue: number;
   quantity?: number;
+  ticker?: string; // Ticker symbol for automatic price updates API
   linkToAccountId?: string; // Optional: To associate with a specific shadow/master account if ever needed
   uid?: string;
 }
@@ -95,7 +101,7 @@ export interface Budget {
   tag?: string;
   accountId?: string;
   limit: number;
-  period: 'monthly';
+  period: "monthly";
 }
 
 export interface Scenario {
@@ -110,6 +116,6 @@ export interface CustomReport {
   showDetails: boolean;
   showSankey: boolean;
   comparePreviousPeriod?: boolean;
-  type: 'pnl' | 'cashflow' | 'ledger';
+  type: "pnl" | "cashflow" | "ledger";
   data: any;
 }
