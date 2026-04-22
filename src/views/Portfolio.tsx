@@ -87,7 +87,7 @@ export const Portfolio = () => {
       if (!item.ticker) continue;
       try {
         if (item.type === "Mutual Fund") {
-          const response = await fetch(`/proxy/mfQuote?schemeCode=${encodeURIComponent(item.ticker)}`);
+          const response = await fetch(`/api/mfQuote?schemeCode=${encodeURIComponent(item.ticker)}`);
           if (!response.ok) {
             const errText = await response.text().catch(() => "N/A");
             throw new Error(`Failed to fetch from AMFI backend proxy: ${response.status} ${errText.slice(0, 50)}`);
@@ -116,7 +116,7 @@ export const Portfolio = () => {
           }
         } else {
           // Fetch through our own backend proxy to bypass Brave/Adblockers completely.
-          const response = await fetch(`/proxy/stockQuote?ticker=${encodeURIComponent(item.ticker)}`);
+          const response = await fetch(`/api/stockQuote?ticker=${encodeURIComponent(item.ticker)}`);
           
           if (!response.ok) {
              const errText = await response.text().catch(() => "N/A");

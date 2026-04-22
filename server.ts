@@ -7,7 +7,7 @@ async function startServer() {
   const PORT = 3000;
 
   // API route to proxy fetch requests so adblockers (like Brave) don't block them
-  app.get("/proxy/stockQuote", async (req, res) => {
+  app.get("/api/stockQuote", async (req, res) => {
     try {
       const { ticker } = req.query;
       if (!ticker || typeof ticker !== "string") {
@@ -35,7 +35,7 @@ async function startServer() {
   });
 
   // API route to fetch Indian Mutual Fund NAV from public AMFI API
-  app.get("/proxy/mfQuote", async (req, res) => {
+  app.get("/api/mfQuote", async (req, res) => {
     try {
       const { schemeCode } = req.query;
       if (!schemeCode || typeof schemeCode !== "string") {
