@@ -87,9 +87,15 @@ export const Portfolio = () => {
       if (!item.ticker) continue;
       try {
         if (item.type === "Mutual Fund") {
-          const response = await fetch(`/api/mfQuote?schemeCode=${encodeURIComponent(item.ticker)}`);
+          const response = await fetch(`/proxy/mfQuote?schemeCode=${encodeURIComponent(item.ticker)}`);
           if (!response.ok) {
-            throw new Error("Failed to fetch from AMFI backend proxy");
+            const errText = await response.text().catch(() => "N/A");
+            throw new Error(`Failed to fetch from AMFI backend proxy: ${response.status} ${errText.slice(0, 50)}`);
+          }
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("text/html")) {
+             const htmlBody = await response.text();
+             throw new Error(`Expected JSON but got HTML. First 100 chars: ${htmlBody.slice(0, 100)}`);
           }
           const data = await response.json();
           if (data && data.data && data.data.length > 0) {
@@ -97,7 +103,6 @@ export const Portfolio = () => {
             const itemIndex = updatedItems.findIndex((i) => i.id === item.id);
 
             if (itemIndex > -1 && latestPrice > 0 && updatedItems[itemIndex].quantity) {
-              // Ensure we use the exact quantity from the current state
               const itemQuantity = updatedItems[itemIndex].quantity;
               const newCurrentValue = latestPrice * (itemQuantity !== undefined ? itemQuantity : 0);
               updatedItems[itemIndex] = {
@@ -111,10 +116,17 @@ export const Portfolio = () => {
           }
         } else {
           // Fetch through our own backend proxy to bypass Brave/Adblockers completely.
-          const response = await fetch(`/api/stockQuote?ticker=${encodeURIComponent(item.ticker)}`);
+          const response = await fetch(`/proxy/stockQuote?ticker=${encodeURIComponent(item.ticker)}`);
           
           if (!response.ok) {
-             throw new Error("Failed to fetch from backend proxy");
+             const errText = await response.text().catch(() => "N/A");
+             throw new Error(`Failed to fetch from backend proxy: ${response.status} ${errText.slice(0, 50)}`);
+          }
+
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("text/html")) {
+             const htmlBody = await response.text();
+             throw new Error(`Expected JSON but got HTML. First 100 chars: ${htmlBody.slice(0, 100)}`);
           }
 
           const data = await response.json();
