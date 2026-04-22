@@ -34,6 +34,30 @@ async function startServer() {
     }
   });
 
+  // API route to fetch Indian Mutual Fund NAV from public AMFI API
+  app.get("/api/mfQuote", async (req, res) => {
+    try {
+      const { schemeCode } = req.query;
+      if (!schemeCode || typeof schemeCode !== "string") {
+        return res.status(400).json({ error: "Scheme code is required" });
+      }
+
+      const targetUrl = `https://api.mfapi.in/mf/${encodeURIComponent(schemeCode)}`;
+      
+      const response = await fetch(targetUrl);
+      
+      if (!response.ok) {
+        throw new Error(`AMFI API responded with ${response.status}`);
+      }
+      
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Proxy mf error:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch mutual fund data" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

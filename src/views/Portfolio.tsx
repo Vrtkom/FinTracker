@@ -72,7 +72,7 @@ export const Portfolio = () => {
     setIsSyncing(true);
     let updatedCount = 0;
     const itemsToUpdate = portfolioItems.filter(
-      (item) => item.type === "Stock" && item.ticker && item.quantity,
+      (item) => ["Stock", "Mutual Fund"].includes(item.type) && item.ticker && item.quantity,
     );
 
     if (itemsToUpdate.length === 0) {
@@ -86,35 +86,56 @@ export const Portfolio = () => {
     for (const item of itemsToUpdate) {
       if (!item.ticker) continue;
       try {
-        // Fetch through our own backend proxy to bypass Brave/Adblockers completely.
-        const response = await fetch(`/api/stockQuote?ticker=${encodeURIComponent(item.ticker)}`);
-        
-        if (!response.ok) {
-           throw new Error("Failed to fetch from backend proxy");
-        }
-
-        const data = await response.json();
-        const quote = data?.chart?.result?.[0];
-
-        if (quote && quote.meta && quote.meta.regularMarketPrice) {
-          const latestPrice = quote.meta.regularMarketPrice;
-          const itemIndex = updatedItems.findIndex((i) => i.id === item.id);
-
-          if (
-            itemIndex > -1 &&
-            latestPrice > 0 &&
-            updatedItems[itemIndex].quantity
-          ) {
-            const newCurrentValue =
-              latestPrice * updatedItems[itemIndex].quantity;
-            updatedItems[itemIndex] = {
-              ...updatedItems[itemIndex],
-              currentValue: newCurrentValue,
-            };
-            updatedCount++;
+        if (item.type === "Mutual Fund") {
+          const response = await fetch(`/api/mfQuote?schemeCode=${encodeURIComponent(item.ticker)}`);
+          if (!response.ok) {
+            throw new Error("Failed to fetch from AMFI backend proxy");
           }
-        } else if (data.chart?.error) {
-          toast.error(`Symbol not found: ${item.ticker}`);
+          const data = await response.json();
+          if (data && data.data && data.data.length > 0) {
+            const latestPrice = parseFloat(data.data[0].nav);
+            const itemIndex = updatedItems.findIndex((i) => i.id === item.id);
+
+            if (itemIndex > -1 && latestPrice > 0 && updatedItems[itemIndex].quantity) {
+              // Ensure we use the exact quantity from the current state
+              const itemQuantity = updatedItems[itemIndex].quantity;
+              const newCurrentValue = latestPrice * (itemQuantity !== undefined ? itemQuantity : 0);
+              updatedItems[itemIndex] = {
+                ...updatedItems[itemIndex],
+                currentValue: newCurrentValue,
+              };
+              updatedCount++;
+            }
+          } else {
+            toast.error(`Scheme code not found: ${item.ticker}`);
+          }
+        } else {
+          // Fetch through our own backend proxy to bypass Brave/Adblockers completely.
+          const response = await fetch(`/api/stockQuote?ticker=${encodeURIComponent(item.ticker)}`);
+          
+          if (!response.ok) {
+             throw new Error("Failed to fetch from backend proxy");
+          }
+
+          const data = await response.json();
+          const quote = data?.chart?.result?.[0];
+
+          if (quote && quote.meta && quote.meta.regularMarketPrice) {
+            const latestPrice = quote.meta.regularMarketPrice;
+            const itemIndex = updatedItems.findIndex((i) => i.id === item.id);
+
+            if (itemIndex > -1 && latestPrice > 0 && updatedItems[itemIndex].quantity) {
+              const itemQuantity = updatedItems[itemIndex].quantity;
+              const newCurrentValue = latestPrice * (itemQuantity !== undefined ? itemQuantity : 0);
+              updatedItems[itemIndex] = {
+                ...updatedItems[itemIndex],
+                currentValue: newCurrentValue,
+              };
+              updatedCount++;
+            }
+          } else if (data.chart?.error) {
+            toast.error(`Symbol not found: ${item.ticker}`);
+          }
         }
       } catch (err) {
         console.error(`Failed to update ${item.ticker}`, err);
@@ -127,7 +148,7 @@ export const Portfolio = () => {
     if (updatedCount > 0) {
       setPortfolioItems(updatedItems);
       toast.success(
-        `Successfully synced ${updatedCount} asset prices using Yahoo Finance!`,
+        `Successfully synced ${updatedCount} asset prices!`,
       );
     } else {
       toast.error("Failed to sync any prices or invalid tickers.");
@@ -175,7 +196,7 @@ export const Portfolio = () => {
         .map(([name, value]: [string, number]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
     } else {
-      const useQuantity = filter === "Stock" && stockChartMetric === "quantity";
+      const useQuantity = ["Stock", "Crypto", "Mutual Fund"].includes(filter) && stockChartMetric === "quantity";
       return filteredPortfolioItems
         .filter((item) =>
           useQuantity ? (item.quantity || 0) > 0 : (item.currentValue || 0) > 0,
@@ -220,7 +241,7 @@ export const Portfolio = () => {
     e.preventDefault();
     if (!user) return;
 
-    const isUnitBased = ["Stock", "Crypto"].includes(type);
+    const isUnitBased = ["Stock", "Crypto", "Mutual Fund"].includes(type);
 
     let finalInvested = 0;
     let finalCurrent = 0;
@@ -263,7 +284,7 @@ export const Portfolio = () => {
               currentValue: finalCurrent,
               quantity: finalQty,
               ticker:
-                type === "Stock" || type === "Crypto"
+                ["Stock", "Crypto", "Mutual Fund"].includes(type)
                   ? ticker || undefined
                   : undefined,
               linkToAccountId: linkToAccountId || undefined,
@@ -281,7 +302,7 @@ export const Portfolio = () => {
         currentValue: isUnitBased ? finalInvested : finalCurrent,
         quantity: finalQty,
         ticker:
-          type === "Stock" || type === "Crypto"
+          ["Stock", "Crypto", "Mutual Fund"].includes(type)
             ? ticker || undefined
             : undefined,
         linkToAccountId: linkToAccountId || undefined,
@@ -444,7 +465,7 @@ export const Portfolio = () => {
             <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400">
               <PieChartIcon className="w-4 h-4" /> Asset Allocation
             </div>
-            {filter === "Stock" && (
+            {["Stock", "Crypto", "Mutual Fund"].includes(filter) && (
               <div className="flex bg-slate-100 dark:bg-gray-800 rounded-lg p-0.5">
                 <button
                   onClick={() => setStockChartMetric("value")}
@@ -493,7 +514,7 @@ export const Portfolio = () => {
                                   ).toFixed(1)
                                 : 0;
                             const useQuantity =
-                              filter === "Stock" &&
+                              ["Stock", "Crypto", "Mutual Fund"].includes(filter) &&
                               stockChartMetric === "quantity";
                             const formattedVal = useQuantity
                               ? value.toLocaleString(undefined, {
@@ -561,7 +582,7 @@ export const Portfolio = () => {
                           )
                         : 0;
                     const useQuantity =
-                      filter === "Stock" && stockChartMetric === "quantity";
+                      ["Stock", "Crypto", "Mutual Fund"].includes(filter) && stockChartMetric === "quantity";
                     const formattedVal = useQuantity
                       ? entry.value.toLocaleString(undefined, {
                           maximumFractionDigits: 2,
@@ -837,17 +858,17 @@ export const Portfolio = () => {
                 />
               </div>
 
-              {(type === "Stock" || type === "Crypto") && (
+              {["Stock", "Crypto", "Mutual Fund"].includes(type) && (
                 <div>
                   <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">
-                    Ticker Symbol (for Auto Sync)
+                    {type === "Mutual Fund" ? "AMFI Scheme Code (for Auto Sync)" : "Ticker Symbol (for Auto Sync)"}
                   </label>
                   <input
                     type="text"
                     value={ticker}
                     onChange={(e) => setTicker(e.target.value)}
                     className={inputClasses}
-                    placeholder="e.g., AAPL"
+                    placeholder={type === "Mutual Fund" ? "e.g., 120503" : "e.g., AAPL"}
                   />
                 </div>
               )}
@@ -940,7 +961,7 @@ export const Portfolio = () => {
                 </p>
               </div>
 
-              {["Stock", "Crypto"].includes(type) ? (
+              {["Stock", "Crypto", "Mutual Fund"].includes(type) ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">
