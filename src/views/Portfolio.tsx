@@ -766,7 +766,7 @@ export const Portfolio = () => {
                             onClick={() => {
                               setUpdateValueAsset(item);
                               if (
-                                ["Stock", "Crypto"].includes(item.type) &&
+                                ["Stock", "Crypto", "Mutual Fund"].includes(item.type) &&
                                 item.quantity
                               ) {
                                 setNewCurrentValueOrPrice(
@@ -1055,7 +1055,7 @@ export const Portfolio = () => {
                 </div>
               )}
 
-              {["Stock", "Crypto"].includes(type) && (
+              {["Stock", "Crypto", "Mutual Fund"].includes(type) && (
                 <div className="bg-slate-50 dark:bg-gray-800 p-4 rounded-xl border border-slate-100 dark:border-gray-700 mb-2">
                   <div className="flex justify-between items-center text-sm mb-1">
                     <span className="text-slate-500 dark:text-gray-400">
@@ -1105,7 +1105,7 @@ export const Portfolio = () => {
                 e.preventDefault();
                 if (!tradeAsset.linkToAccountId || !user) return;
 
-                const isUnitBased = ["Stock", "Crypto"].includes(
+                const isUnitBased = ["Stock", "Crypto", "Mutual Fund"].includes(
                   tradeAsset.type,
                 );
                 const tradeAmt = isUnitBased
@@ -1211,12 +1211,12 @@ export const Portfolio = () => {
                     className={inputClasses}
                   >
                     <option value="buy">
-                      {["Stock", "Crypto"].includes(tradeAsset?.type)
+                      {["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
                         ? "Buy"
                         : "Invest More"}
                     </option>
                     <option value="sell">
-                      {["Stock", "Crypto"].includes(tradeAsset?.type)
+                      {["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
                         ? "Sell"
                         : "Withdraw"}
                     </option>
@@ -1236,7 +1236,7 @@ export const Portfolio = () => {
                 </div>
               </div>
 
-              {["Stock", "Crypto"].includes(tradeAsset?.type) ? (
+              {["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type) ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">
@@ -1304,7 +1304,7 @@ export const Portfolio = () => {
                   </span>
                   <span className="font-bold text-slate-900 dark:text-white">
                     {formatCurrency(
-                      ["Stock", "Crypto"].includes(tradeAsset?.type)
+                      ["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
                         ? tradeQuantity * tradePrice
                         : tradeAmount,
                     )}
@@ -1322,7 +1322,7 @@ export const Portfolio = () => {
                 <button
                   type="submit"
                   disabled={
-                    ["Stock", "Crypto"].includes(tradeAsset?.type)
+                    ["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
                       ? !tradeQuantity || !tradePrice
                       : !tradeAmount
                   }
@@ -1330,10 +1330,10 @@ export const Portfolio = () => {
                 >
                   Log{" "}
                   {tradeType === "buy"
-                    ? ["Stock", "Crypto"].includes(tradeAsset?.type)
+                    ? ["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
                       ? "Buy"
                       : "Investment"
-                    : ["Stock", "Crypto"].includes(tradeAsset?.type)
+                    : ["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
                       ? "Sell"
                       : "Withdrawal"}
                 </button>
@@ -1393,7 +1393,7 @@ export const Portfolio = () => {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                const isUnitBased = ["Stock", "Crypto"].includes(
+                const isUnitBased = ["Stock", "Crypto", "Mutual Fund"].includes(
                   updateValueAsset.type,
                 );
                 const val = Number(newCurrentValueOrPrice);
@@ -1416,7 +1416,7 @@ export const Portfolio = () => {
             >
               <div>
                 <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">
-                  {["Stock", "Crypto"].includes(updateValueAsset.type)
+                  {["Stock", "Crypto", "Mutual Fund"].includes(updateValueAsset.type)
                     ? "Current Market Price (Per Unit)"
                     : "Current Total Value"}
                 </label>
@@ -1437,7 +1437,7 @@ export const Portfolio = () => {
                 </div>
               </div>
 
-              {["Stock", "Crypto"].includes(updateValueAsset.type) &&
+              {["Stock", "Crypto", "Mutual Fund"].includes(updateValueAsset.type) &&
                 updateValueAsset.quantity > 0 && (
                   <div className="bg-slate-50 dark:bg-gray-800 p-4 rounded-xl border border-slate-100 dark:border-gray-700 text-sm flex justify-between">
                     <span className="text-slate-500">
