@@ -72,7 +72,7 @@ export const Portfolio = () => {
     setIsSyncing(true);
     let updatedCount = 0;
     const itemsToUpdate = portfolioItems.filter(
-      (item) => ["Stock", "Mutual Fund"].includes(item.type) && item.ticker && item.quantity,
+      (item) => ["Stock", "Mutual Fund", "ETF"].includes(item.type) && item.ticker && item.quantity,
     );
 
     if (itemsToUpdate.length === 0) {
@@ -208,7 +208,7 @@ export const Portfolio = () => {
         .map(([name, value]: [string, number]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
     } else {
-      const useQuantity = ["Stock", "Crypto", "Mutual Fund"].includes(filter) && stockChartMetric === "quantity";
+      const useQuantity = ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(filter) && stockChartMetric === "quantity";
       return filteredPortfolioItems
         .filter((item) =>
           useQuantity ? (item.quantity || 0) > 0 : (item.currentValue || 0) > 0,
@@ -229,6 +229,7 @@ export const Portfolio = () => {
   const COLORS: Record<string, string> = {
     Stock: "#3b82f6", // blue-500
     "Mutual Fund": "#10b981", // emerald-500
+    ETF: "#ec4899", // pink-500
     "Fixed Deposit / RD": "#f59e0b", // amber-500
     Crypto: "#8b5cf6", // violet-500
     Other: "#64748b", // slate-500
@@ -253,7 +254,7 @@ export const Portfolio = () => {
     e.preventDefault();
     if (!user) return;
 
-    const isUnitBased = ["Stock", "Crypto", "Mutual Fund"].includes(type);
+    const isUnitBased = ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(type);
 
     let finalInvested = 0;
     let finalCurrent = 0;
@@ -296,7 +297,7 @@ export const Portfolio = () => {
               currentValue: finalCurrent,
               quantity: finalQty,
               ticker:
-                ["Stock", "Crypto", "Mutual Fund"].includes(type)
+                ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(type)
                   ? ticker || undefined
                   : undefined,
               linkToAccountId: linkToAccountId || undefined,
@@ -314,7 +315,7 @@ export const Portfolio = () => {
         currentValue: isUnitBased ? finalInvested : finalCurrent,
         quantity: finalQty,
         ticker:
-          ["Stock", "Crypto", "Mutual Fund"].includes(type)
+          ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(type)
             ? ticker || undefined
             : undefined,
         linkToAccountId: linkToAccountId || undefined,
@@ -404,6 +405,7 @@ export const Portfolio = () => {
           "All",
           "Stock",
           "Mutual Fund",
+          "ETF",
           "Fixed Deposit / RD",
           "Crypto",
           "Other",
@@ -477,7 +479,7 @@ export const Portfolio = () => {
             <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400">
               <PieChartIcon className="w-4 h-4" /> Asset Allocation
             </div>
-            {["Stock", "Crypto", "Mutual Fund"].includes(filter) && (
+            {["Stock", "Crypto", "Mutual Fund", "ETF"].includes(filter) && (
               <div className="flex bg-slate-100 dark:bg-gray-800 rounded-lg p-0.5">
                 <button
                   onClick={() => setStockChartMetric("value")}
@@ -526,7 +528,7 @@ export const Portfolio = () => {
                                   ).toFixed(1)
                                 : 0;
                             const useQuantity =
-                              ["Stock", "Crypto", "Mutual Fund"].includes(filter) &&
+                              ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(filter) &&
                               stockChartMetric === "quantity";
                             const formattedVal = useQuantity
                               ? value.toLocaleString(undefined, {
@@ -594,7 +596,7 @@ export const Portfolio = () => {
                           )
                         : 0;
                     const useQuantity =
-                      ["Stock", "Crypto", "Mutual Fund"].includes(filter) && stockChartMetric === "quantity";
+                      ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(filter) && stockChartMetric === "quantity";
                     const formattedVal = useQuantity
                       ? entry.value.toLocaleString(undefined, {
                           maximumFractionDigits: 2,
@@ -766,7 +768,7 @@ export const Portfolio = () => {
                             onClick={() => {
                               setUpdateValueAsset(item);
                               if (
-                                ["Stock", "Crypto", "Mutual Fund"].includes(item.type) &&
+                                ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(item.type) &&
                                 item.quantity
                               ) {
                                 setNewCurrentValueOrPrice(
@@ -870,7 +872,7 @@ export const Portfolio = () => {
                 />
               </div>
 
-              {["Stock", "Crypto", "Mutual Fund"].includes(type) && (
+              {["Stock", "Crypto", "Mutual Fund", "ETF"].includes(type) && (
                 <div>
                   <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">
                     {type === "Mutual Fund" ? "AMFI Scheme Code (for Auto Sync)" : "Ticker Symbol (for Auto Sync)"}
@@ -896,6 +898,7 @@ export const Portfolio = () => {
                 >
                   <option value="Stock">Stock / Equity</option>
                   <option value="Mutual Fund">Mutual Fund</option>
+                  <option value="ETF">ETF</option>
                   <option value="Fixed Deposit / RD">Fixed Deposit / RD</option>
                   <option value="Crypto">Crypto</option>
                   <option value="Other">Other</option>
@@ -973,7 +976,7 @@ export const Portfolio = () => {
                 </p>
               </div>
 
-              {["Stock", "Crypto", "Mutual Fund"].includes(type) ? (
+              {["Stock", "Crypto", "Mutual Fund", "ETF"].includes(type) ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">
@@ -1055,7 +1058,7 @@ export const Portfolio = () => {
                 </div>
               )}
 
-              {["Stock", "Crypto", "Mutual Fund"].includes(type) && (
+              {["Stock", "Crypto", "Mutual Fund", "ETF"].includes(type) && (
                 <div className="bg-slate-50 dark:bg-gray-800 p-4 rounded-xl border border-slate-100 dark:border-gray-700 mb-2">
                   <div className="flex justify-between items-center text-sm mb-1">
                     <span className="text-slate-500 dark:text-gray-400">
@@ -1105,7 +1108,7 @@ export const Portfolio = () => {
                 e.preventDefault();
                 if (!tradeAsset.linkToAccountId || !user) return;
 
-                const isUnitBased = ["Stock", "Crypto", "Mutual Fund"].includes(
+                const isUnitBased = ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(
                   tradeAsset.type,
                 );
                 const tradeAmt = isUnitBased
@@ -1211,12 +1214,12 @@ export const Portfolio = () => {
                     className={inputClasses}
                   >
                     <option value="buy">
-                      {["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
+                      {["Stock", "Crypto", "Mutual Fund", "ETF"].includes(tradeAsset?.type)
                         ? "Buy"
                         : "Invest More"}
                     </option>
                     <option value="sell">
-                      {["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
+                      {["Stock", "Crypto", "Mutual Fund", "ETF"].includes(tradeAsset?.type)
                         ? "Sell"
                         : "Withdraw"}
                     </option>
@@ -1236,7 +1239,7 @@ export const Portfolio = () => {
                 </div>
               </div>
 
-              {["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type) ? (
+              {["Stock", "Crypto", "Mutual Fund", "ETF"].includes(tradeAsset?.type) ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">
@@ -1304,7 +1307,7 @@ export const Portfolio = () => {
                   </span>
                   <span className="font-bold text-slate-900 dark:text-white">
                     {formatCurrency(
-                      ["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
+                      ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(tradeAsset?.type)
                         ? tradeQuantity * tradePrice
                         : tradeAmount,
                     )}
@@ -1322,7 +1325,7 @@ export const Portfolio = () => {
                 <button
                   type="submit"
                   disabled={
-                    ["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
+                    ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(tradeAsset?.type)
                       ? !tradeQuantity || !tradePrice
                       : !tradeAmount
                   }
@@ -1330,10 +1333,10 @@ export const Portfolio = () => {
                 >
                   Log{" "}
                   {tradeType === "buy"
-                    ? ["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
+                    ? ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(tradeAsset?.type)
                       ? "Buy"
                       : "Investment"
-                    : ["Stock", "Crypto", "Mutual Fund"].includes(tradeAsset?.type)
+                    : ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(tradeAsset?.type)
                       ? "Sell"
                       : "Withdrawal"}
                 </button>
@@ -1393,7 +1396,7 @@ export const Portfolio = () => {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                const isUnitBased = ["Stock", "Crypto", "Mutual Fund"].includes(
+                const isUnitBased = ["Stock", "Crypto", "Mutual Fund", "ETF"].includes(
                   updateValueAsset.type,
                 );
                 const val = Number(newCurrentValueOrPrice);
@@ -1416,7 +1419,7 @@ export const Portfolio = () => {
             >
               <div>
                 <label className="block text-sm font-medium text-slate-500 dark:text-gray-400 mb-1.5">
-                  {["Stock", "Crypto", "Mutual Fund"].includes(updateValueAsset.type)
+                  {["Stock", "Crypto", "Mutual Fund", "ETF"].includes(updateValueAsset.type)
                     ? "Current Market Price (Per Unit)"
                     : "Current Total Value"}
                 </label>
@@ -1437,7 +1440,7 @@ export const Portfolio = () => {
                 </div>
               </div>
 
-              {["Stock", "Crypto", "Mutual Fund"].includes(updateValueAsset.type) &&
+              {["Stock", "Crypto", "Mutual Fund", "ETF"].includes(updateValueAsset.type) &&
                 updateValueAsset.quantity > 0 && (
                   <div className="bg-slate-50 dark:bg-gray-800 p-4 rounded-xl border border-slate-100 dark:border-gray-700 text-sm flex justify-between">
                     <span className="text-slate-500">
