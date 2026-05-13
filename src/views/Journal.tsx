@@ -29,6 +29,8 @@ import {
   parseReceipt,
 } from "../services/geminiService";
 
+import { TransactionSlideOver } from "../components/TransactionSlideOver";
+
 export const Journal = ({
   switchTab,
 }: {
@@ -93,6 +95,8 @@ export const Journal = ({
   const [bulkDebit, setBulkDebit] = useState("");
   const [bulkCredit, setBulkCredit] = useState("");
   const [bulkTags, setBulkTags] = useState("");
+
+  const [slideOverTxId, setSlideOverTxId] = useState<string | null>(null);
 
   // Inline Edit State
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
@@ -1778,6 +1782,13 @@ export const Journal = ({
                               <CheckCircle2 className="w-4 h-4" />
                             </button>
                             <button
+                              onClick={() => setSlideOverTxId(t.id)}
+                              title="Edit Full Entry"
+                              className="text-slate-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 bg-white dark:bg-gray-900 border border-slate-200 dark:border-transparent hover:border-blue-200 dark:hover:bg-gray-800 p-1.5 rounded-lg transition-colors"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
                               onClick={() => duplicateTransaction(t.id)}
                               title="Duplicate Entry"
                               className="text-slate-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 bg-white dark:bg-gray-900 border border-slate-200 dark:border-transparent hover:border-blue-200 dark:hover:bg-gray-800 p-1.5 rounded-lg transition-colors"
@@ -1915,8 +1926,14 @@ export const Journal = ({
                       <CheckCircle2 className="w-4 h-4" />
                     </button>
                     <button
+                      onClick={() => setSlideOverTxId(t.id)}
+                      className="text-slate-500 hover:text-slate-600 dark:text-gray-400 dark:hover:text-gray-300 text-xs font-medium flex items-center gap-1 ml-auto"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" /> Edit
+                    </button>
+                    <button
                       onClick={() => duplicateTransaction(t.id)}
-                      className="text-blue-500 hover:text-blue-600 dark:text-blue-400/80 dark:hover:text-blue-400 text-xs font-medium flex items-center gap-1 ml-auto"
+                      className="text-blue-500 hover:text-blue-600 dark:text-blue-400/80 dark:hover:text-blue-400 text-xs font-medium flex items-center gap-1"
                     >
                       <Copy className="w-3.5 h-3.5" /> Dup
                     </button>
@@ -1932,6 +1949,12 @@ export const Journal = ({
             })
         )}
       </div>
+
+      <TransactionSlideOver
+        isOpen={!!slideOverTxId}
+        onClose={() => setSlideOverTxId(null)}
+        transactionId={slideOverTxId}
+      />
     </div>
   );
 };
