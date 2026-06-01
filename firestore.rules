@@ -150,11 +150,12 @@ service cloud.firestore {
 
     function isValidBudget() {
       let data = request.resource.data;
-      return hasRequiredFields(['id', 'tag', 'limit', 'period', 'uid']) &&
+      return hasRequiredFields(['id', 'limit', 'period', 'uid']) &&
              data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
-             data.tag is string && data.tag.size() > 0 && data.tag.size() < 100 &&
              data.limit is number && data.limit >= 0 &&
-             data.period == 'monthly';
+             data.period == 'monthly' &&
+             (!('tag' in data) || (data.tag is string && data.tag.size() > 0 && data.tag.size() < 100)) &&
+             (!('accountId' in data) || (data.accountId is string && data.accountId.size() > 0 && data.accountId.size() < 100));
     }
 
     function isValidTemplate() {
