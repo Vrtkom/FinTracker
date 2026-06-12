@@ -13,6 +13,15 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: "autoUpdate",
         includeAssets: ["pwa-192x192.svg", "pwa-512x512.svg"],
+        workbox: {
+          navigateFallbackDenylist: [/^\/api/],
+          runtimeCaching: [
+            {
+              urlPattern: /^\/api\/.*/,
+              handler: "NetworkOnly",
+            },
+          ],
+        },
         manifest: {
           name: "FINTrack",
           short_name: "FINTrack",
