@@ -44,6 +44,14 @@ const COLORS = [
   "#ec4899",
   "#14b8a6",
   "#f97316",
+  "#6366f1",
+  "#06b6d4",
+  "#84cc16",
+  "#eab308",
+  "#d946ef",
+  "#0ea5e9",
+  "#a855f7",
+  "#f43f5e",
 ];
 
 export const Insights = ({
@@ -428,13 +436,20 @@ export const Insights = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Expense Breakdown */}
         <div className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
-            <PieChartIcon className="w-5 h-5 text-blue-500" /> Expense Breakdown
-          </h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-blue-500" /> Expense Breakdown
+            </h3>
+            {expenseData.length > 0 && (
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
+                {expenseData.length} {expenseData.length === 1 ? "category" : "categories"}
+              </span>
+            )}
+          </div>
 
           {expenseData.length > 0 ? (
             <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="w-full md:w-1/2 h-64">
+              <div className="w-full md:w-1/2 h-64 shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -443,7 +458,7 @@ export const Insights = ({
                       cy="50%"
                       innerRadius={60}
                       outerRadius={80}
-                      paddingAngle={5}
+                      paddingAngle={expenseData.length > 15 ? 1 : 4}
                       dataKey="value"
                       onClick={(data) => {
                         if (data && data.payload && data.payload.id) {
@@ -473,33 +488,36 @@ export const Insights = ({
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="w-full md:w-1/2 space-y-3">
-                {topExpenses.map((item, idx) => (
+              <div className="w-full md:w-1/2 space-y-2 max-h-64 overflow-y-auto pr-1.5">
+                {expenseData.map((item, idx) => (
                   <div
-                    key={idx}
-                    className="flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
+                    key={item.id || idx}
+                    className="flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800 p-2 rounded-xl transition-colors"
                     onClick={() => {
                       setJournalFilterAccount(item.id);
                       setJournalFilterSearch("");
                       setJournalFilterDate("all");
                       switchTab("transactions");
                     }}
+                    title={`View ${item.name} in Journal`}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0 mr-2">
                       <div
-                        className="w-3 h-3 rounded-full"
+                        className="w-3 h-3 rounded-full shrink-0"
                         style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                       ></div>
-                      <span className="text-sm font-medium text-slate-700 dark:text-gray-300">
+                      <span className="text-sm font-medium text-slate-700 dark:text-gray-300 truncate">
                         {item.name}
                       </span>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <span className="text-sm font-bold text-slate-900 dark:text-white">
                         {formatCurrency(item.value)}
                       </span>
                       <p className="text-[10px] text-slate-500 dark:text-gray-400">
-                        {((item.value / totalMonthlyExpense) * 100).toFixed(1)}%
+                        {totalMonthlyExpense > 0
+                          ? ((item.value / totalMonthlyExpense) * 100).toFixed(1)
+                          : "0.0"}%
                       </p>
                     </div>
                   </div>
