@@ -72,9 +72,11 @@ export const Insights = ({
   >("this_month");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [breakdownTab, setBreakdownTab] = useState<"expense" | "income">("expense");
 
   const {
     expenseData,
+    incomeData,
     incomeVsExpenseData,
     topExpenses,
     currentPeriodMetrics,
@@ -142,6 +144,10 @@ export const Insights = ({
     const previous = getMetricsForPeriod(prevStartDate, prevEndDate);
 
     const expenseData = Object.entries(current.expenseMap)
+      .map(([name, data]) => ({ name, value: data.value, id: data.id }))
+      .sort((a, b) => b.value - a.value);
+
+    const incomeData = Object.entries(current.incomeMap)
       .map(([name, data]) => ({ name, value: data.value, id: data.id }))
       .sort((a, b) => b.value - a.value);
 
@@ -248,6 +254,7 @@ export const Insights = ({
 
     return {
       expenseData,
+      incomeData,
       incomeVsExpenseData,
       topExpenses,
       currentPeriodMetrics,
@@ -257,6 +264,11 @@ export const Insights = ({
   }, [accounts, transactions, dateRange, customStart, customEnd]);
 
   const totalMonthlyExpense = expenseData.reduce(
+    (sum, item) => sum + item.value,
+    0,
+  );
+
+  const totalMonthlyIncome = incomeData.reduce(
     (sum, item) => sum + item.value,
     0,
   );
@@ -434,100 +446,209 @@ export const Insights = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Expense Breakdown */}
+        {/* Expense & Income Breakdown Card */}
         <div className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <PieChartIcon className="w-5 h-5 text-blue-500" /> Expense Breakdown
-            </h3>
-            {expenseData.length > 0 && (
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
-                {expenseData.length} {expenseData.length === 1 ? "category" : "categories"}
-              </span>
-            )}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-2">
+              <PieChartIcon className={`w-5 h-5 ${breakdownTab === "income" ? "text-emerald-500" : "text-blue-500"}`} />
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                {breakdownTab === "income" ? "Income Breakdown" : "Expense Breakdown"}
+              </h3>
+            </div>
+
+            {/* Toggle Pills between Expense and Income */}
+            <div className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setBreakdownTab("expense")}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                  breakdownTab === "expense"
+                    ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-xs"
+                    : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Expenses ({expenseData.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setBreakdownTab("income")}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                  breakdownTab === "income"
+                    ? "bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Income ({incomeData.length})
+              </button>
+            </div>
           </div>
 
-          {expenseData.length > 0 ? (
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="w-full md:w-1/2 h-64 shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={expenseData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={expenseData.length > 15 ? 1 : 4}
-                      dataKey="value"
-                      onClick={(data) => {
-                        if (data && data.payload && data.payload.id) {
-                          setJournalFilterAccount(data.payload.id);
-                          setJournalFilterSearch("");
-                          setJournalFilterDate("all");
-                          switchTab("transactions");
-                        }
+          {breakdownTab === "expense" ? (
+            expenseData.length > 0 ? (
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="w-full md:w-1/2 h-64 shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={expenseData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={expenseData.length > 15 ? 1 : 4}
+                        dataKey="value"
+                        onClick={(data) => {
+                          if (data && data.payload && data.payload.id) {
+                            setJournalFilterAccount(data.payload.id);
+                            setJournalFilterSearch("");
+                            setJournalFilterDate("all");
+                            switchTab("transactions");
+                          }
+                        }}
+                      >
+                        {expenseData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                            className="cursor-pointer hover:opacity-80 transition-opacity"
+                          />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{
+                          borderRadius: "12px",
+                          border: "none",
+                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="w-full md:w-1/2 space-y-2 max-h-64 overflow-y-auto pr-1.5">
+                  {expenseData.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      className="flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800 p-2 rounded-xl transition-colors"
+                      onClick={() => {
+                        setJournalFilterAccount(item.id);
+                        setJournalFilterSearch("");
+                        setJournalFilterDate("all");
+                        switchTab("transactions");
                       }}
+                      title={`View ${item.name} in Journal`}
                     >
-                      {expenseData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                          className="cursor-pointer hover:opacity-80 transition-opacity"
-                        />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                      contentStyle={{
-                        borderRadius: "12px",
-                        border: "none",
-                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="w-full md:w-1/2 space-y-2 max-h-64 overflow-y-auto pr-1.5">
-                {expenseData.map((item, idx) => (
-                  <div
-                    key={item.id || idx}
-                    className="flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800 p-2 rounded-xl transition-colors"
-                    onClick={() => {
-                      setJournalFilterAccount(item.id);
-                      setJournalFilterSearch("");
-                      setJournalFilterDate("all");
-                      switchTab("transactions");
-                    }}
-                    title={`View ${item.name} in Journal`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0 mr-2">
-                      <div
-                        className="w-3 h-3 rounded-full shrink-0"
-                        style={{ backgroundColor: COLORS[idx % COLORS.length] }}
-                      ></div>
-                      <span className="text-sm font-medium text-slate-700 dark:text-gray-300 truncate">
-                        {item.name}
-                      </span>
+                      <div className="flex items-center gap-2 min-w-0 mr-2">
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                        ></div>
+                        <span className="text-sm font-medium text-slate-700 dark:text-gray-300 truncate">
+                          {item.name}
+                        </span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                          {formatCurrency(item.value)}
+                        </span>
+                        <p className="text-[10px] text-slate-500 dark:text-gray-400">
+                          {totalMonthlyExpense > 0
+                            ? ((item.value / totalMonthlyExpense) * 100).toFixed(1)
+                            : "0.0"}%
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <span className="text-sm font-bold text-slate-900 dark:text-white">
-                        {formatCurrency(item.value)}
-                      </span>
-                      <p className="text-[10px] text-slate-500 dark:text-gray-400">
-                        {totalMonthlyExpense > 0
-                          ? ((item.value / totalMonthlyExpense) * 100).toFixed(1)
-                          : "0.0"}%
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-slate-500 dark:text-gray-400 text-sm">
+                No expenses recorded in this period.
+              </div>
+            )
           ) : (
-            <div className="h-64 flex items-center justify-center text-slate-500 dark:text-gray-400 text-sm">
-              No expenses recorded in this period.
-            </div>
+            incomeData.length > 0 ? (
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="w-full md:w-1/2 h-64 shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={incomeData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={incomeData.length > 15 ? 1 : 4}
+                        dataKey="value"
+                        onClick={(data) => {
+                          if (data && data.payload && data.payload.id) {
+                            setJournalFilterAccount(data.payload.id);
+                            setJournalFilterSearch("");
+                            setJournalFilterDate("all");
+                            switchTab("transactions");
+                          }
+                        }}
+                      >
+                        {incomeData.map((entry, index) => (
+                          <Cell
+                            key={`income-cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                            className="cursor-pointer hover:opacity-80 transition-opacity"
+                          />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{
+                          borderRadius: "12px",
+                          border: "none",
+                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="w-full md:w-1/2 space-y-2 max-h-64 overflow-y-auto pr-1.5">
+                  {incomeData.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      className="flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800 p-2 rounded-xl transition-colors"
+                      onClick={() => {
+                        setJournalFilterAccount(item.id);
+                        setJournalFilterSearch("");
+                        setJournalFilterDate("all");
+                        switchTab("transactions");
+                      }}
+                      title={`View ${item.name} in Journal`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 mr-2">
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                        ></div>
+                        <span className="text-sm font-medium text-slate-700 dark:text-gray-300 truncate">
+                          {item.name}
+                        </span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                          {formatCurrency(item.value)}
+                        </span>
+                        <p className="text-[10px] text-slate-500 dark:text-gray-400">
+                          {totalMonthlyIncome > 0
+                            ? ((item.value / totalMonthlyIncome) * 100).toFixed(1)
+                            : "0.0"}%
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-slate-500 dark:text-gray-400 text-sm">
+                No income sources recorded in this period.
+              </div>
+            )
           )}
         </div>
 
