@@ -13,6 +13,7 @@ import {
   X,
   TrendingUp,
   Settings,
+  Sparkles,
 } from "lucide-react";
 import { useFinance } from "../context/FinanceContext";
 import {
@@ -23,6 +24,7 @@ import {
   getAccountBalance,
   getNetWorthChartData,
 } from "../utils/finance";
+import { calculateSpendableSummary, getEligibleBankAccounts } from "../utils/fixedCommitments";
 import { TransactionSlideOver } from "../components/TransactionSlideOver";
 import {
   AreaChart,
@@ -53,6 +55,7 @@ export const Dashboard = ({
     spendableAccounts,
     setSpendableAccounts,
     portfolioItems,
+    reverseBudgetConfig,
   } = useFinance();
   const [slideOverTxId, setSlideOverTxId] = useState<string | null>(null);
   const [showSpendableSettings, setShowSpendableSettings] = useState(false);
@@ -87,9 +90,11 @@ export const Dashboard = ({
   const [selectedDay, setSelectedDay] = useState<any>(null);
 
   const totalSpendable = useMemo(() => {
-    const spendableAccs = accounts.filter((a) =>
-      spendableAccounts.includes(a.id),
-    );
+    const eligibleBanks = getEligibleBankAccounts(accounts);
+    const spendableAccs =
+      spendableAccounts.length > 0
+        ? accounts.filter((a) => spendableAccounts.includes(a.id))
+        : eligibleBanks;
     const totalBank = spendableAccs.reduce(
       (sum, a) => sum + getAccountBalance(a.id, accounts, transactions),
       0,
@@ -149,23 +154,26 @@ export const Dashboard = ({
     }
   });
 
-  let safeToSpend = 0;
-  let allowanceText = "";
-  if (totalBudget > 0) {
-    const remaining = Math.max(0, totalBudget - spentInBudgets);
-    safeToSpend = remaining / daysLeft;
-    allowanceText = `Based on ${formatCurrency(remaining)} remaining across your active micro-budgets.`;
-  } else {
-    const assumedIncome = curIncome > 0 ? curIncome : recurringIncomeTotal;
-    const allowedExpenses = assumedIncome * 0.8;
-    const remaining = Math.max(0, allowedExpenses - curExpenses);
-    safeToSpend = remaining / daysLeft;
-    if (assumedIncome > 0) {
-      allowanceText = `Based on 80% of your ${formatCurrency(assumedIncome)} income minus current expenses.`;
-    } else {
-      allowanceText = `Add an income source or micro-budgets to accurately calculate your allowance.`;
-    }
-  }
+  // Fixed Commitments & Remaining to Spend calculation
+  const spendableSummary = calculateSpendableSummary(accounts, recurring, transactions);
+  const safeToSpend = Math.max(0, spendableSummary.remainingToSpend / daysLeft);
+
+  const allowanceText = (
+    <div>
+      <div className="flex items-center justify-center md:justify-end gap-1.5 font-bold text-emerald-200">
+        <Sparkles className="w-3.5 h-3.5" /> Remaining to Spend (Safe Cash)
+      </div>
+      <p className="mt-0.5 opacity-90 text-[11px] md:text-xs">
+        {formatCurrency(spendableSummary.remainingToSpend)} safe after -{formatCurrency(spendableSummary.totalPendingFixed)} pending fixed SIPs, rent & bills.
+      </p>
+      <button
+        onClick={() => switchTab("accounts")}
+        className="text-[11px] underline font-semibold text-white/90 hover:text-white mt-1 inline-block"
+      >
+        View Bank Accounts Breakdown →
+      </button>
+    </div>
+  );
 
   const calendarDays = [];
   let runningBalance = totals.liquidAssets; // Start with current liquid assets

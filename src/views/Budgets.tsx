@@ -20,7 +20,10 @@ import {
   X,
   Wallet,
   Edit2,
+  Sparkles,
+  Calendar,
 } from "lucide-react";
+import { FixedCommitmentsBanner } from "../components/FixedCommitmentsBanner";
 
 export const Budgets = ({
   switchTab,
@@ -41,9 +44,9 @@ export const Budgets = ({
     funds,
     setFunds,
   } = useFinance();
-  const [activeTab, setActiveTab] = useState<"budgets" | "goals" | "funds">(
-    "budgets",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "commitments" | "budgets" | "goals" | "funds"
+  >("commitments");
   const [isAddingBudget, setIsAddingBudget] = useState(false);
   const [isAddingGoal, setIsAddingGoal] = useState(false);
   const [isAddingFund, setIsAddingFund] = useState(false);
@@ -258,26 +261,34 @@ export const Budgets = ({
         )}
       </div>
 
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-gray-800 pb-4 mb-6">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-gray-800 pb-4 mb-6 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("commitments")}
+          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 shrink-0 ${activeTab === "commitments" ? "bg-slate-900 text-white dark:bg-white dark:text-gray-900 shadow-sm" : "text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800"}`}
+        >
+          <Calendar className="w-4 h-4 text-blue-500" /> Fixed Outflows & Spend
+        </button>
         <button
           onClick={() => setActiveTab("budgets")}
-          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 ${activeTab === "budgets" ? "bg-slate-900 text-white dark:bg-white dark:text-gray-900 shadow-sm" : "text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800"}`}
+          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 shrink-0 ${activeTab === "budgets" ? "bg-slate-900 text-white dark:bg-white dark:text-gray-900 shadow-sm" : "text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800"}`}
         >
-          <Target className="w-4 h-4" /> Budgets
+          <Target className="w-4 h-4" /> Category Budgets
         </button>
         <button
           onClick={() => setActiveTab("goals")}
-          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 ${activeTab === "goals" ? "bg-slate-900 text-white dark:bg-white dark:text-gray-900 shadow-sm" : "text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800"}`}
+          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 shrink-0 ${activeTab === "goals" ? "bg-slate-900 text-white dark:bg-white dark:text-gray-900 shadow-sm" : "text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800"}`}
         >
           <PiggyBank className="w-4 h-4" /> Financial Goals
         </button>
         <button
           onClick={() => setActiveTab("funds")}
-          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 ${activeTab === "funds" ? "bg-slate-900 text-white dark:bg-white dark:text-gray-900 shadow-sm" : "text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800"}`}
+          className={`text-sm md:text-base font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 shrink-0 ${activeTab === "funds" ? "bg-slate-900 text-white dark:bg-white dark:text-gray-900 shadow-sm" : "text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800"}`}
         >
           <Wallet className="w-4 h-4" /> Funds
         </button>
       </div>
+
+      {activeTab === "commitments" && <FixedCommitmentsBanner />}
 
       {activeTab === "budgets" && (
         <div className="space-y-6">

@@ -28,7 +28,7 @@ export const ManageRecurringModal = () => {
       <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-gray-800">
         <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-gray-800">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Repeat className="w-5 h-5 text-blue-500" /> Manage Recurring Flows
+            <Repeat className="w-5 h-5 text-blue-500" /> Manage Fixed Flows & SIPs
           </h2>
           <button
             onClick={() => setShowManageRecurringModal(false)}
@@ -47,17 +47,37 @@ export const ManageRecurringModal = () => {
                   ? "text-emerald-600 dark:text-emerald-400"
                   : "text-slate-900 dark:text-white";
                 const prefix = isIncome ? "+" : "-";
+                const isWeekly = r.frequency === "weekly" || r.dayOfWeek === 1;
+
                 return (
                   <li
                     key={idx}
                     className="text-sm py-3 flex justify-between items-center border-b border-slate-100 dark:border-gray-700/50 last:border-0"
                   >
                     <div>
-                      <span className="text-slate-800 dark:text-gray-200 font-medium">
-                        {r.description}
-                      </span>
-                      <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5">
-                        Day {r.day || 1} of month
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-800 dark:text-gray-200 font-bold">
+                          {r.description}
+                        </span>
+                        {r.category && (
+                          <span className="text-[10px] uppercase font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-400 border border-slate-200 dark:border-gray-700">
+                            {r.category}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">
+                        {isWeekly ? (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                            Every Monday early morning (Weekly SIP)
+                          </span>
+                        ) : (
+                          <span>Day {r.day || 1} of month</span>
+                        )}
+                        {crAcc && (
+                          <span className="ml-1.5 opacity-80">
+                            • Deducted from: <strong>{crAcc.name}</strong>
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
@@ -78,7 +98,7 @@ export const ManageRecurringModal = () => {
             </ul>
           ) : (
             <p className="text-center text-slate-500 dark:text-gray-400 py-8">
-              No recurring templates saved.
+              No recurring commitments saved.
             </p>
           )}
         </div>

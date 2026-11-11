@@ -16,6 +16,7 @@ import {
   TransactionTemplate,
   Fund,
   PortfolioItem,
+  ReverseBudgetConfig,
 } from "../types";
 import { auth, db, signInWithGoogle, logout } from "../firebase";
 import {
@@ -61,6 +62,8 @@ interface FinanceContextType {
   setSpendableAccounts: (accounts: string[]) => Promise<void>;
   templates: TransactionTemplate[];
   setTemplates: (templates: TransactionTemplate[]) => Promise<void>;
+  reverseBudgetConfig: ReverseBudgetConfig;
+  setReverseBudgetConfig: (config: ReverseBudgetConfig) => Promise<void>;
 
   showRecurringModal: boolean;
   setShowRecurringModal: (val: boolean) => void;
@@ -120,6 +123,19 @@ const defaultReport: CustomReport = {
   data: null,
 };
 
+export const defaultReverseBudgetConfig: ReverseBudgetConfig = {
+  monthlyIncomeMode: "auto",
+  manualIncomeAmount: 100000,
+  fixedBillsMode: "auto",
+  customBills: [],
+  sipMode: "auto",
+  customSipAmount: 25000,
+  emergencySavingsMode: "percentage",
+  emergencySavingsValue: 10,
+  emergencyAccountId: "",
+  rolloverUnspent: false,
+};
+
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider = ({ children }: { children: ReactNode }) => {
@@ -133,6 +149,19 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const [advancedMode, setAdvancedModeState] = useState(
     localStorage.getItem("fintrack_advanced_mode") === "true",
   );
+
+  const [reverseBudgetConfig, setReverseBudgetConfigState] =
+    useState<ReverseBudgetConfig>(() => {
+      const saved = localStorage.getItem("fintrack_reverse_budget");
+      if (saved) {
+        try {
+          return { ...defaultReverseBudgetConfig, ...JSON.parse(saved) };
+        } catch (e) {
+          console.error("Failed to parse fintrack_reverse_budget", e);
+        }
+      }
+      return defaultReverseBudgetConfig;
+    });
 
   const [accounts, setAccountsState] = useState<Account[]>([]);
   const [transactions, setTransactionsState] = useState<Transaction[]>([]);
@@ -391,6 +420,23 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
         ),
     );
 
+    const unsubReverseBudget = onSnapshot(
+      doc(db, `users/${user.uid}/settings/reverseBudget`),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as ReverseBudgetConfig;
+          setReverseBudgetConfigState((prev) => ({ ...prev, ...data }));
+          localStorage.setItem(
+            "fintrack_reverse_budget",
+            JSON.stringify({ ...reverseBudgetConfig, ...data }),
+          );
+        }
+      },
+      (error) => {
+        console.warn("Reverse budget sync warning:", error);
+      },
+    );
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         // Trigger a re-read of the document to update streak if day changed
@@ -440,6 +486,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       unsubPortfolio();
       unsubActivity();
       unsubPreferences();
+      unsubReverseBudget();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [user, isAuthReady]);
@@ -663,6 +710,22 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
     await logout();
   };
 
+  const setReverseBudgetConfig = async (config: ReverseBudgetConfig) => {
+    setReverseBudgetConfigState(config);
+    localStorage.setItem("fintrack_reverse_budget", JSON.stringify(config));
+    if (user) {
+      try {
+        await setDoc(
+          doc(db, `users/${user.uid}/settings/reverseBudget`),
+          { ...config, uid: user.uid },
+          { merge: true },
+        );
+      } catch (err) {
+        console.warn("Could not save reverse budget to cloud:", err);
+      }
+    }
+  };
+
   return (
     <FinanceContext.Provider
       value={{
@@ -693,6 +756,8 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
         setSpendableAccounts,
         templates,
         setTemplates,
+        reverseBudgetConfig,
+        setReverseBudgetConfig,
         showRecurringModal,
         setShowRecurringModal,
         showManageRecurringModal,

@@ -161,6 +161,24 @@
         "hideBalances": { "type": "boolean" },
         "advancedMode": { "type": "boolean" }
       }
+    },
+    "ReverseBudget": {
+      "title": "ReverseBudget",
+      "description": "User's Reverse Budget and Guilt-Free Splurge Pot configuration",
+      "type": "object",
+      "properties": {
+        "monthlyIncomeMode": { "type": "string", "enum": ["auto", "manual"] },
+        "manualIncomeAmount": { "type": "number" },
+        "fixedBillsMode": { "type": "string", "enum": ["auto", "custom"] },
+        "customBills": { "type": "array", "items": { "type": "object" } },
+        "sipMode": { "type": "string", "enum": ["auto", "custom"] },
+        "customSipAmount": { "type": "number" },
+        "emergencySavingsMode": { "type": "string", "enum": ["percentage", "fixed"] },
+        "emergencySavingsValue": { "type": "number" },
+        "emergencyAccountId": { "type": "string" },
+        "rolloverUnspent": { "type": "boolean" },
+        "uid": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -199,6 +217,10 @@
     "/users/{userId}/settings/preferences": {
       "schema": { "$ref": "#/entities/Preferences" },
       "description": "User's app preferences"
+    },
+    "/users/{userId}/settings/reverseBudget": {
+      "schema": { "$ref": "#/entities/ReverseBudget" },
+      "description": "User's Reverse Budget and Splurge Pot configuration"
     }
   }
 }

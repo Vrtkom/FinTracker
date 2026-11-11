@@ -208,6 +208,19 @@ service cloud.firestore {
              (!('advancedMode' in data) || data.advancedMode is bool);
     }
 
+    function isValidReverseBudget() {
+      let data = request.resource.data;
+      return (!('monthlyIncomeMode' in data) || data.monthlyIncomeMode in ['auto', 'manual']) &&
+             (!('manualIncomeAmount' in data) || data.manualIncomeAmount is number) &&
+             (!('fixedBillsMode' in data) || data.fixedBillsMode in ['auto', 'custom']) &&
+             (!('customBills' in data) || data.customBills is list) &&
+             (!('sipMode' in data) || data.sipMode in ['auto', 'custom']) &&
+             (!('customSipAmount' in data) || data.customSipAmount is number) &&
+             (!('emergencySavingsMode' in data) || data.emergencySavingsMode in ['percentage', 'fixed']) &&
+             (!('emergencySavingsValue' in data) || data.emergencySavingsValue is number) &&
+             (!('rolloverUnspent' in data) || data.rolloverUnspent is bool);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -282,6 +295,14 @@ service cloud.firestore {
         allow update: if isOwner(userId) && isValidPreferences();
         allow delete: if isOwner(userId);
       }
+
+      match /settings/reverseBudget {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidReverseBudget();
+        allow update: if isOwner(userId) && isValidReverseBudget();
+        allow delete: if isOwner(userId);
+      }
     }
   }
 }
+

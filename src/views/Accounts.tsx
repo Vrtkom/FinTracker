@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   LayoutGrid,
   Edit2,
@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   Coffee,
   Landmark,
+  Calendar,
 } from "lucide-react";
 import { useFinance } from "../context/FinanceContext";
 import {
@@ -29,7 +30,15 @@ import {
   DropResult,
 } from "@hello-pangea/dnd";
 import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
-import { AccountDetails } from "./AccountDetails";
+import { AccountDetails, AccountDateRange } from "./AccountDetails";
+import {
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  startOfYear,
+  endOfYear,
+  format,
+} from "date-fns";
 
 export const Accounts = ({
   switchTab,
@@ -50,6 +59,46 @@ export const Accounts = ({
     showGlobalAddAccount,
     setShowGlobalAddAccount,
   } = useFinance();
+
+  const [dateRange, setDateRange] = useState<AccountDateRange>("all");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+
+  const { startDate, endDate, rangeLabel } = useMemo(() => {
+    const now = new Date();
+    if (dateRange === "this_month") {
+      const s = format(startOfMonth(now), "yyyy-MM-dd");
+      const e = format(endOfMonth(now), "yyyy-MM-dd");
+      return { startDate: s, endDate: e, rangeLabel: "This Month" };
+    }
+    if (dateRange === "last_month") {
+      const s = format(startOfMonth(subMonths(now, 1)), "yyyy-MM-dd");
+      const e = format(endOfMonth(subMonths(now, 1)), "yyyy-MM-dd");
+      return { startDate: s, endDate: e, rangeLabel: "Last Month" };
+    }
+    if (dateRange === "this_year") {
+      const s = format(startOfYear(now), "yyyy-MM-dd");
+      const e = format(endOfYear(now), "yyyy-MM-dd");
+      return { startDate: s, endDate: e, rangeLabel: "This Year" };
+    }
+    if (dateRange === "custom") {
+      return {
+        startDate: customStart || undefined,
+        endDate: customEnd || undefined,
+        rangeLabel:
+          customStart && customEnd
+            ? `${customStart} to ${customEnd}`
+            : "Custom Range",
+      };
+    }
+    return {
+      startDate: undefined,
+      endDate: undefined,
+      rangeLabel: "Overall (All Time)",
+    };
+  }, [dateRange, customStart, customEnd]);
+
+  const isPeriodFiltered = dateRange !== "all";
 
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [viewingAccountId, setViewingAccountId] = useState<string | null>(null);
@@ -205,16 +254,28 @@ export const Accounts = ({
 
   const renderSparkline = (accountId: string, color: string) => {
     const accountTxs = transactions
-      .filter(
-        (t) => t.debitAccount === accountId || t.creditAccount === accountId,
-      )
+      .filter((t) => {
+        const matchesAccount =
+          t.debitAccount === accountId || t.creditAccount === accountId;
+        if (!matchesAccount) return false;
+        if (startDate && t.date < startDate) return false;
+        if (endDate && t.date > endDate) return false;
+        return true;
+      })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    let currentBal = getAccountBalance(accountId, accounts, transactions);
-    const data = [{ date: "Now", balance: currentBal }];
+    let currentBal = getAccountBalance(
+      accountId,
+      accounts,
+      transactions,
+      false,
+      false,
+      startDate,
+      endDate,
+    );
+    const data = [{ date: "End", balance: currentBal }];
 
     for (const tx of accountTxs.slice(0, 30)) {
-      // Just last 30 txs for sparkline
       if (tx.debitAccount === accountId) {
         currentBal -= tx.amount;
       } else if (tx.creditAccount === accountId) {
@@ -290,7 +351,18 @@ export const Accounts = ({
                     (sum, g) => sum + g.targetAmount,
                     0,
                   );
-                  const bal = getAccountBalance(acc.id, accounts, transactions);
+                  const bal = getAccountBalance(
+                    acc.id,
+                    accounts,
+                    transactions,
+                    false,
+                    false,
+                    startDate,
+                    endDate,
+                  );
+                  const overallBal = isPeriodFiltered
+                    ? getAccountBalance(acc.id, accounts, transactions)
+                    : bal;
                   const IconComponent = getAccountIcon(acc.type);
                   const accColor = getAccountColor(acc.type);
 
@@ -338,9 +410,16 @@ export const Accounts = ({
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               {renderSparkline(acc.id, accColor)}
-                              <span className="font-bold text-slate-900 dark:text-white text-sm md:text-base mr-1">
-                                {formatCurrency(bal)}
-                              </span>
+                              <div className="text-right">
+                                <span className="font-bold text-slate-900 dark:text-white text-sm md:text-base">
+                                  {formatCurrency(bal)}
+                                </span>
+                                {isPeriodFiltered && (
+                                  <p className="text-[10px] text-slate-400 dark:text-gray-500">
+                                    All: {formatCurrency(overallBal)}
+                                  </p>
+                                )}
+                              </div>
                               {acc.type === "liability" && (
                                 <button
                                   onClick={(e) => {
@@ -488,19 +567,107 @@ export const Accounts = ({
     );
   };
 
-  const totalAssets = accounts
-    .filter((a) => a.type === "asset")
-    .reduce(
-      (sum, a) => sum + getAccountBalance(a.id, accounts, transactions),
-      0,
-    );
-  const totalLiabilities = accounts
-    .filter((a) => a.type === "liability")
-    .reduce(
-      (sum, a) => sum + getAccountBalance(a.id, accounts, transactions),
-      0,
-    );
+  const totalAssets = useMemo(() => {
+    return accounts
+      .filter((a) => a.type === "asset")
+      .reduce(
+        (sum, a) =>
+          sum +
+          getAccountBalance(
+            a.id,
+            accounts,
+            transactions,
+            false,
+            false,
+            startDate,
+            endDate,
+          ),
+        0,
+      );
+  }, [accounts, transactions, startDate, endDate]);
+
+  const totalLiabilities = useMemo(() => {
+    return accounts
+      .filter((a) => a.type === "liability")
+      .reduce(
+        (sum, a) =>
+          sum +
+          getAccountBalance(
+            a.id,
+            accounts,
+            transactions,
+            false,
+            false,
+            startDate,
+            endDate,
+          ),
+        0,
+      );
+  }, [accounts, transactions, startDate, endDate]);
+
+  const totalIncome = useMemo(() => {
+    return accounts
+      .filter((a) => a.type === "income")
+      .reduce(
+        (sum, a) =>
+          sum +
+          getAccountBalance(
+            a.id,
+            accounts,
+            transactions,
+            false,
+            false,
+            startDate,
+            endDate,
+          ),
+        0,
+      );
+  }, [accounts, transactions, startDate, endDate]);
+
+  const totalExpenses = useMemo(() => {
+    return accounts
+      .filter((a) => a.type === "expense")
+      .reduce(
+        (sum, a) =>
+          sum +
+          getAccountBalance(
+            a.id,
+            accounts,
+            transactions,
+            false,
+            false,
+            startDate,
+            endDate,
+          ),
+        0,
+      );
+  }, [accounts, transactions, startDate, endDate]);
+
   const netWorth = totalAssets - totalLiabilities;
+  const netSavings = totalIncome - totalExpenses;
+
+  // Also calculate overall totals for comparison if filtered
+  const overallAssets = useMemo(() => {
+    if (!isPeriodFiltered) return totalAssets;
+    return accounts
+      .filter((a) => a.type === "asset")
+      .reduce(
+        (sum, a) => sum + getAccountBalance(a.id, accounts, transactions),
+        0,
+      );
+  }, [accounts, transactions, isPeriodFiltered, totalAssets]);
+
+  const overallLiabilities = useMemo(() => {
+    if (!isPeriodFiltered) return totalLiabilities;
+    return accounts
+      .filter((a) => a.type === "liability")
+      .reduce(
+        (sum, a) => sum + getAccountBalance(a.id, accounts, transactions),
+        0,
+      );
+  }, [accounts, transactions, isPeriodFiltered, totalLiabilities]);
+
+  const overallNetWorth = overallAssets - overallLiabilities;
 
   if (viewingAccountId) {
     return (
@@ -511,31 +678,102 @@ export const Accounts = ({
           setViewingAccountId(null);
           setEditingAccountId(id);
         }}
+        initialDateRange={dateRange}
+        initialCustomStart={customStart}
+        initialCustomEnd={customEnd}
       />
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-        <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
-          Accounts
-        </h2>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+            Accounts
+            {isPeriodFiltered && (
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                {rangeLabel}
+              </span>
+            )}
+          </h2>
+          <p className="text-slate-500 dark:text-gray-400 text-xs md:text-sm mt-0.5">
+            Manage your ledger balances, credit limits, and categories
+          </p>
+        </div>
+
+        {/* Date Range Selector */}
+        <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-gray-900 p-2 rounded-2xl border border-slate-200 dark:border-gray-800 shadow-sm w-full md:w-auto">
+          <div className="flex items-center gap-2 px-2">
+            <Calendar className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value as AccountDateRange)}
+              aria-label="Filter accounts by time period"
+              className="bg-transparent border-none text-xs md:text-sm font-semibold text-slate-700 dark:text-gray-200 focus:ring-0 cursor-pointer py-1 pr-6"
+            >
+              <option value="all">Overall (All Time)</option>
+              <option value="this_month">This Month</option>
+              <option value="last_month">Last Month</option>
+              <option value="this_year">This Year</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
+
+          {dateRange === "custom" && (
+            <div className="flex items-center gap-1.5 px-2 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-gray-700 pt-2 sm:pt-0">
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                aria-label="Custom start date"
+                className="text-xs bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg px-2 py-1 text-slate-700 dark:text-gray-300"
+              />
+              <span className="text-slate-400 text-xs">-</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                aria-label="Custom end date"
+                className="text-xs bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg px-2 py-1 text-slate-700 dark:text-gray-300"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-6 md:p-8 text-white shadow-lg shadow-emerald-500/20 flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
-          <p className="text-emerald-100 font-medium mb-1">Net Worth</p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-emerald-100 font-medium">
+              {isPeriodFiltered ? `${rangeLabel} Net Worth / Position` : "Net Worth"}
+            </p>
+            {isPeriodFiltered && (
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full text-white">
+                Filtered
+              </span>
+            )}
+          </div>
           <h3 className="text-4xl md:text-5xl font-bold tracking-tight">
             {formatCurrency(netWorth)}
           </h3>
+          {isPeriodFiltered && (
+            <p className="text-xs text-emerald-100/90 mt-1.5">
+              Overall Net Worth: <span className="font-bold text-white">{formatCurrency(overallNetWorth)}</span>
+            </p>
+          )}
         </div>
-        <div className="flex gap-6 w-full md:w-auto bg-white/10 p-4 rounded-2xl backdrop-blur-sm">
+        <div className="flex flex-wrap gap-4 md:gap-6 w-full md:w-auto bg-white/10 p-4 rounded-2xl backdrop-blur-sm">
           <div>
             <p className="text-emerald-100 text-xs uppercase tracking-wider mb-1">
               Assets
             </p>
             <p className="text-xl font-bold">{formatCurrency(totalAssets)}</p>
+            {isPeriodFiltered && (
+              <p className="text-[10px] text-emerald-100/80">
+                All: {formatCurrency(overallAssets)}
+              </p>
+            )}
           </div>
           <div className="w-px bg-emerald-400/30"></div>
           <div>
@@ -545,7 +783,30 @@ export const Accounts = ({
             <p className="text-xl font-bold">
               {formatCurrency(totalLiabilities)}
             </p>
+            {isPeriodFiltered && (
+              <p className="text-[10px] text-emerald-100/80">
+                All: {formatCurrency(overallLiabilities)}
+              </p>
+            )}
           </div>
+          {isPeriodFiltered && (
+            <>
+              <div className="w-px bg-emerald-400/30"></div>
+              <div>
+                <p className="text-emerald-100 text-xs uppercase tracking-wider mb-1">
+                  Net Savings
+                </p>
+                <p
+                  className={`text-xl font-bold ${netSavings >= 0 ? "text-emerald-200" : "text-red-200"}`}
+                >
+                  {formatCurrency(netSavings)}
+                </p>
+                <p className="text-[10px] text-emerald-100/80">
+                  Inc: {formatCurrency(totalIncome)} | Exp: {formatCurrency(totalExpenses)}
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

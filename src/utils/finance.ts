@@ -28,6 +28,8 @@ export const getAccountBalance = (
   transactions: Transaction[],
   includeFuture = false,
   onlyCleared = false,
+  startDate?: string,
+  endDate?: string,
 ) => {
   const account = accounts.find((a) => a.id === accountId);
   if (!account) return 0;
@@ -37,7 +39,9 @@ export const getAccountBalance = (
   const totalDebits = transactions
     .filter(
       (t) =>
-        (includeFuture || t.date <= todayStr) &&
+        (includeFuture || t.date <= (endDate || todayStr)) &&
+        (!startDate || t.date >= startDate) &&
+        (!endDate || t.date <= endDate) &&
         (!onlyCleared || t.cleared !== false) &&
         t.debitAccount === accountId,
     )
@@ -46,7 +50,9 @@ export const getAccountBalance = (
   const totalCredits = transactions
     .filter(
       (t) =>
-        (includeFuture || t.date <= todayStr) &&
+        (includeFuture || t.date <= (endDate || todayStr)) &&
+        (!startDate || t.date >= startDate) &&
+        (!endDate || t.date <= endDate) &&
         (!onlyCleared || t.cleared !== false) &&
         t.creditAccount === accountId,
     )

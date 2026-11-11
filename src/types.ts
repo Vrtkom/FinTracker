@@ -60,6 +60,9 @@ export interface TransactionTemplate {
   merchant?: string;
 }
 
+export type FixedCommitmentCategory = "sip" | "rent" | "bill" | "other";
+export type FixedCommitmentFrequency = "monthly" | "weekly";
+
 export interface Recurring {
   id: string;
   description: string;
@@ -67,6 +70,9 @@ export interface Recurring {
   debitAccount: string;
   creditAccount: string;
   day: number;
+  category?: FixedCommitmentCategory;
+  frequency?: FixedCommitmentFrequency;
+  dayOfWeek?: number; // 1 = Monday
 }
 
 export interface Fund {
@@ -118,4 +124,27 @@ export interface CustomReport {
   comparePreviousPeriod?: boolean;
   type: "pnl" | "cashflow" | "ledger";
   data: any;
+}
+
+export interface CustomBillItem {
+  id: string;
+  name: string;
+  amount: number;
+  dueDay?: number;
+  accountId?: string;
+  isPaid?: boolean;
+}
+
+export interface ReverseBudgetConfig {
+  monthlyIncomeMode: "auto" | "manual";
+  manualIncomeAmount: number;
+  fixedBillsMode: "auto" | "custom";
+  customBills: CustomBillItem[];
+  sipMode: "auto" | "custom";
+  customSipAmount: number;
+  emergencySavingsMode: "percentage" | "fixed";
+  emergencySavingsValue: number;
+  emergencyAccountId?: string;
+  rolloverUnspent?: boolean;
+  uid?: string;
 }
