@@ -221,6 +221,16 @@ service cloud.firestore {
              (!('rolloverUnspent' in data) || data.rolloverUnspent is bool);
     }
 
+    function isValidChatMessage() {
+      let data = request.resource.data;
+      return hasRequiredFields(['id', 'role', 'content', 'timestamp', 'uid']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.role in ['user', 'model', 'system'] &&
+             data.content is string && data.content.size() <= 20000 &&
+             data.timestamp is number &&
+             data.uid == request.auth.uid;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -301,6 +311,13 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidReverseBudget();
         allow update: if isOwner(userId) && isValidReverseBudget();
         allow delete: if isOwner(userId);
+      }
+
+      match /chatMessages/{messageId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidChatMessage() && uidUnchanged();
+        allow update: if isOwner(userId) && isDocOwner() && isValidChatMessage() && uidNotModified();
+        allow delete: if isOwner(userId) && isDocOwner();
       }
     }
   }

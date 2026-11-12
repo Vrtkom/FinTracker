@@ -148,3 +148,11 @@ export interface ReverseBudgetConfig {
   rolloverUnspent?: boolean;
   uid?: string;
 }
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "model" | "system";
+  content: string;
+  timestamp: number;
+  uid?: string;
+}

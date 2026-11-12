@@ -9,7 +9,7 @@ export const QuickAddButton = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { setShowGlobalAddTx, setShowGlobalAddAccount } = useFinance();
+  const { setShowGlobalAddTx, setShowGlobalAddAccount, isAiDrawerOpen } = useFinance();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -36,9 +36,12 @@ export const QuickAddButton = ({
     }
   };
 
+  // Do not render Quick Add floating button when AI assistant drawer is open to prevent overlapping controls
+  if (isAiDrawerOpen) return null;
+
   return (
     <div
-      className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-50"
+      className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-40"
       ref={menuRef}
     >
       {isOpen && (
@@ -72,6 +75,7 @@ export const QuickAddButton = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+        title="Quick Add"
       >
         <Plus
           className={`w-6 h-6 transition-transform duration-200 ${isOpen ? "rotate-45" : ""}`}

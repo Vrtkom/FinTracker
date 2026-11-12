@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
         registerType: "autoUpdate",
         includeAssets: ["pwa-192x192.svg", "pwa-512x512.svg"],
         workbox: {
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           navigateFallbackDenylist: [/^\/api/],
           runtimeCaching: [
             {
@@ -44,9 +45,6 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
-    define: {
-      "process.env.GEMINI_API_KEY": JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "."),

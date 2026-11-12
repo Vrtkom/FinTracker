@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   Target,
   Briefcase,
+  Sparkles,
+  Bot,
 } from "lucide-react";
 import { useFinance } from "../context/FinanceContext";
 import { getTotals } from "../utils/finance";
@@ -67,6 +69,8 @@ export const Layout = ({
     setJournalFilterSearch,
     setJournalFilterDate,
     portfolioItems,
+    isAiDrawerOpen,
+    setIsAiDrawerOpen,
   } = useFinance();
 
   const [hasImbalance, setHasImbalance] = useState(false);
@@ -211,6 +215,15 @@ export const Layout = ({
             </div>
           )}
           <button
+            onClick={() => setIsAiDrawerOpen(true)}
+            className="text-blue-600 dark:text-blue-400 p-1 relative hover:scale-105 transition-transform"
+            title="Open FinTrack AI Copilot"
+          >
+            <Sparkles className="w-5 h-5 fill-blue-500/20" />
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full animate-ping"></span>
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full"></span>
+          </button>
+          <button
             onClick={cycleTheme}
             className="text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white p-1"
             title={`Theme: ${theme}`}
@@ -276,6 +289,15 @@ export const Layout = ({
                     <span className="text-xs font-bold">{activityStreak}</span>
                   </div>
                 )}
+                <button
+                  onClick={() => setIsAiDrawerOpen(true)}
+                  className="text-blue-600 dark:text-blue-400 p-1.5 relative hover:scale-105 transition-transform"
+                  title="Open FinTrack AI Copilot"
+                >
+                  <Sparkles className="w-5 h-5 fill-blue-500/20" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full animate-ping"></span>
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+                </button>
                 <button
                   onClick={cycleTheme}
                   className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors p-1.5"

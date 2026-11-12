@@ -179,6 +179,19 @@
         "rolloverUnspent": { "type": "boolean" },
         "uid": { "type": "string" }
       }
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A message in the user's AI assistant conversation history",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "model", "system"] },
+        "content": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "uid": { "type": "string" }
+      },
+      "required": ["id", "role", "content", "timestamp", "uid"]
     }
   },
   "firestore": {
@@ -221,6 +234,10 @@
     "/users/{userId}/settings/reverseBudget": {
       "schema": { "$ref": "#/entities/ReverseBudget" },
       "description": "User's Reverse Budget and Splurge Pot configuration"
+    },
+    "/users/{userId}/chatMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "User's persistent AI helper conversation messages"
     }
   }
 }

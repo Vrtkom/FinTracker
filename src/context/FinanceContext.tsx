@@ -17,6 +17,7 @@ import {
   Fund,
   PortfolioItem,
   ReverseBudgetConfig,
+  ChatMessage,
 } from "../types";
 import { auth, db, signInWithGoogle, logout } from "../firebase";
 import {
@@ -27,6 +28,7 @@ import {
   deleteDoc,
   writeBatch,
   getDoc,
+  getDocs,
 } from "firebase/firestore";
 import {
   handleFirestoreError,
@@ -92,7 +94,12 @@ interface FinanceContextType {
   showGlobalAddAccount: boolean;
   setShowGlobalAddAccount: (val: boolean) => void;
 
-  globalAddTxDefaults: { tags?: string; debitAccount?: string } | null;
+  globalAddTxDefaults: {
+    tags?: string;
+    debitAccount?: string;
+    creditAccount?: string;
+    type?: "income" | "expense" | "transfer";
+  } | null;
   setGlobalAddTxDefaults: (
     val: {
       tags?: string;
@@ -106,6 +113,12 @@ interface FinanceContextType {
   setCustomReport: (val: CustomReport) => void;
 
   activityStreak: number;
+
+  chatMessages: ChatMessage[];
+  addChatMessage: (msg: Omit<ChatMessage, "id" | "timestamp" | "uid">) => Promise<ChatMessage>;
+  clearChatMessages: () => Promise<void>;
+  isAiDrawerOpen: boolean;
+  setIsAiDrawerOpen: (open: boolean) => void;
 
   clearAllData: () => void;
   migrateLocalData: () => Promise<void>;
@@ -200,6 +213,8 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   } | null>(null);
   const [customReport, setCustomReport] = useState<CustomReport>(defaultReport);
   const [activityStreak, setActivityStreak] = useState<number>(0);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -214,6 +229,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
         setFundsState([]);
         setPortfolioItemsState([]);
         setTemplatesState([]);
+        setChatMessages([]);
         setActivityStreak(0);
       }
     });
@@ -437,6 +453,18 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       },
     );
 
+    const unsubChatMessages = onSnapshot(
+      collection(db, `users/${user.uid}/chatMessages`),
+      (snapshot) => {
+        const msgs = snapshot.docs.map((doc) => doc.data() as ChatMessage);
+        msgs.sort((a, b) => a.timestamp - b.timestamp);
+        setChatMessages(msgs);
+      },
+      (error) => {
+        console.warn("Chat messages sync warning:", error);
+      },
+    );
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         // Trigger a re-read of the document to update streak if day changed
@@ -487,9 +515,67 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       unsubActivity();
       unsubPreferences();
       unsubReverseBudget();
+      unsubChatMessages();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [user, isAuthReady]);
+
+  const addChatMessage = async (msg: Omit<ChatMessage, "id" | "timestamp" | "uid">): Promise<ChatMessage> => {
+    const id = Date.now().toString() + "-" + Math.random().toString(36).substring(2, 7);
+    const newMsg: ChatMessage = {
+      ...msg,
+      id,
+      timestamp: Date.now(),
+      uid: user ? user.uid : undefined,
+    };
+
+    setChatMessages((prev) => [...prev, newMsg]);
+
+    if (user) {
+      try {
+        await setDoc(doc(db, `users/${user.uid}/chatMessages/${id}`), {
+          ...newMsg,
+          uid: user.uid,
+        });
+      } catch (err) {
+        console.warn("Could not save chat message to Firestore:", err);
+      }
+    }
+
+    return newMsg;
+  };
+
+  const clearChatMessages = async () => {
+    const toDelete = [...chatMessages];
+    setChatMessages([]);
+    if (user) {
+      try {
+        const snapshot = await getDocs(
+          collection(db, `users/${user.uid}/chatMessages`),
+        );
+        if (!snapshot.empty) {
+          const batch = writeBatch(db);
+          snapshot.docs.forEach((d) => {
+            batch.delete(d.ref);
+          });
+          await batch.commit();
+        }
+      } catch (err) {
+        console.warn("Could not clear chat messages from Firestore via query:", err);
+        if (toDelete.length > 0) {
+          try {
+            const batch = writeBatch(db);
+            toDelete.forEach((m) => {
+              batch.delete(doc(db, `users/${user.uid}/chatMessages/${m.id}`));
+            });
+            await batch.commit();
+          } catch (batchErr) {
+            console.error("Batch delete fallback failed:", batchErr);
+          }
+        }
+      }
+    }
+  };
 
   const syncCollection = async (
     collectionName: string,
@@ -783,6 +869,11 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
         customReport,
         setCustomReport,
         activityStreak,
+        chatMessages,
+        addChatMessage,
+        clearChatMessages,
+        isAiDrawerOpen,
+        setIsAiDrawerOpen,
         clearAllData,
         migrateLocalData,
       }}

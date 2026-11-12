@@ -18,6 +18,7 @@ import { RecurringModal } from "./components/Modals/RecurringModal";
 import { ManageRecurringModal } from "./components/Modals/ManageRecurringModal";
 import { VirtualPotsModal } from "./components/Modals/VirtualPotsModal";
 import { ReceiptModal } from "./components/Modals/ReceiptModal";
+import { AiAssistantDrawer } from "./components/AiAssistantDrawer";
 import { Plus } from "lucide-react";
 import { Toaster } from "sonner";
 
@@ -132,6 +133,7 @@ const AppContent = () => {
       <ManageRecurringModal />
       <VirtualPotsModal />
       <ReceiptModal />
+      <AiAssistantDrawer />
 
       <QuickAddButton switchTab={setActiveTab} />
 

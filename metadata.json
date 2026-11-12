@@ -1,5 +1,6 @@
 {
   "name": "FINTrack",
-  "description": "",
-  "requestFramePermissions": []
+  "description": "Double-entry personal finance tracking with live portfolio analytics and AI financial copilot.",
+  "requestFramePermissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
