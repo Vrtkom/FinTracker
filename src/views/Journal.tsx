@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { useFinance } from "../context/FinanceContext";
 import { formatCurrency, getAccountBalance } from "../utils/finance";
+import { resolveStandardPeriod } from "../utils/dateRange";
 import {
   parseNaturalLanguageTransaction,
   parseReceipt,
@@ -831,20 +832,24 @@ export const Journal = ({
     );
   }
   if (journalFilterDate !== "all") {
-    const now = new Date();
-    const m = now.getMonth();
-    const y = now.getFullYear();
-    filteredTxs = filteredTxs.filter((t) => {
-      const td = new Date(t.date);
-      if (journalFilterDate === "this_month") {
-        return td.getMonth() === m && td.getFullYear() === y;
-      } else if (journalFilterDate === "last_month") {
-        const prevM = m === 0 ? 11 : m - 1;
-        const prevY = m === 0 ? y - 1 : y;
-        return td.getMonth() === prevM && td.getFullYear() === prevY;
-      }
-      return true;
-    });
+    if (/^\d{4}-\d{2}-\d{2}$/.test(journalFilterDate)) {
+      filteredTxs = filteredTxs.filter(
+        (t) => t.date.slice(0, 10) === journalFilterDate,
+      );
+    } else if (
+      journalFilterDate === "this_month" ||
+      journalFilterDate === "last_month" ||
+      journalFilterDate === "this_year" ||
+      journalFilterDate === "last_year" ||
+      journalFilterDate === "this_fy" ||
+      journalFilterDate === "last_fy"
+    ) {
+      const { startStr, endStr } = resolveStandardPeriod(journalFilterDate);
+      filteredTxs = filteredTxs.filter((t) => {
+        const dStr = t.date.slice(0, 10);
+        return dStr >= startStr && dStr <= endStr;
+      });
+    }
   }
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -1441,11 +1446,18 @@ export const Journal = ({
         <select
           value={journalFilterDate}
           onChange={(e) => setJournalFilterDate(e.target.value)}
-          className={`${inputClasses} w-full md:w-48 py-2.5`}
+          className={`${inputClasses} w-full md:w-56 py-2.5`}
         >
           <option value="all">All Time</option>
           <option value="this_month">This Month</option>
           <option value="last_month">Last Month</option>
+          <option value="this_year">This Year (Jan–Dec)</option>
+          <option value="this_fy">This Financial Year (Apr–Mar)</option>
+          <option value="last_year">Last Year (Jan–Dec)</option>
+          <option value="last_fy">Last Financial Year (Apr–Mar)</option>
+          {/^\d{4}-\d{2}-\d{2}$/.test(journalFilterDate) && (
+            <option value={journalFilterDate}>Date: {journalFilterDate}</option>
+          )}
         </select>
       </div>
 

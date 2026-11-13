@@ -391,8 +391,11 @@ For income, debitAccount is the receiving account, and creditAccount is the inco
     }
   });
 
+  const isCompiledServer =
+    typeof __filename !== "undefined" && __filename.endsWith(".cjs");
+
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !isCompiledServer) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

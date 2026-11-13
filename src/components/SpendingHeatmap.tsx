@@ -1,17 +1,23 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useFinance } from "../context/FinanceContext";
 import {
-  startOfYear,
-  endOfYear,
   eachDayOfInterval,
   format,
   parseISO,
 } from "date-fns";
+import {
+  getCalendarYearBounds,
+  getFinancialYearBounds,
+} from "../utils/dateRange";
 
 export const SpendingHeatmap: React.FC<{
   onDayClick?: (dateStr: string) => void;
 }> = ({ onDayClick }) => {
   const { transactions, accounts } = useFinance();
+  const [yearMode, setYearMode] = useState<"calendar" | "financial">(() => {
+    const saved = localStorage.getItem("spendingHeatmapYearMode");
+    return saved === "financial" ? "financial" : "calendar";
+  });
   const [threshold, setThreshold] = useState<number>(() => {
     const saved = localStorage.getItem("spendingHeatmapThreshold");
     return saved !== null ? Number(saved) : 1000;
@@ -21,10 +27,19 @@ export const SpendingHeatmap: React.FC<{
     localStorage.setItem("spendingHeatmapThreshold", threshold.toString());
   }, [threshold]);
 
-  const heatmapData = useMemo(() => {
+  useEffect(() => {
+    localStorage.setItem("spendingHeatmapYearMode", yearMode);
+  }, [yearMode]);
+
+  const activeBounds = useMemo(() => {
     const today = new Date();
-    const start = startOfYear(today);
-    const end = endOfYear(today);
+    return yearMode === "financial"
+      ? getFinancialYearBounds(today, 0)
+      : getCalendarYearBounds(today, 0);
+  }, [yearMode]);
+
+  const heatmapData = useMemo(() => {
+    const { start, end } = activeBounds;
     const days = eachDayOfInterval({ start, end });
 
     const dailySpending = new Map<string, number>();
@@ -104,7 +119,7 @@ export const SpendingHeatmap: React.FC<{
         colorClass,
       };
     });
-  }, [transactions, accounts, threshold]);
+  }, [transactions, accounts, threshold, activeBounds]);
 
   // Group by months for display
   const months = useMemo(() => {
@@ -167,29 +182,58 @@ export const SpendingHeatmap: React.FC<{
     <div className="bg-white dark:bg-gray-900 p-5 md:p-8 rounded-3xl border border-slate-200 dark:border-gray-800 shadow-sm overflow-hidden">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div>
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
             Spending Heatmap
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-gray-800 dark:text-gray-300">
+              {activeBounds.label}
+            </span>
           </h3>
           <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
             Daily expense intensity. Grey means no activity.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <label
-            htmlFor="threshold"
-            className="text-sm font-medium text-slate-700 dark:text-gray-300"
-          >
-            Daily Target (₹):
-          </label>
-          <input
-            type="number"
-            id="threshold"
-            value={threshold}
-            onChange={(e) => setThreshold(Number(e.target.value) || 0)}
-            className="w-24 p-2 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg outline-none transition-all text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-            min="0"
-            step="100"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center bg-slate-100 dark:bg-gray-800 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setYearMode("calendar")}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                yearMode === "calendar"
+                  ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-xs"
+                  : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              Jan–Dec
+            </button>
+            <button
+              type="button"
+              onClick={() => setYearMode("financial")}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                yearMode === "financial"
+                  ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-xs"
+                  : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              Apr–Mar (FY)
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="threshold"
+              className="text-sm font-medium text-slate-700 dark:text-gray-300"
+            >
+              Daily Target (₹):
+            </label>
+            <input
+              type="number"
+              id="threshold"
+              value={threshold}
+              onChange={(e) => setThreshold(Number(e.target.value) || 0)}
+              className="w-24 p-2 bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg outline-none transition-all text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+              min="0"
+              step="100"
+            />
+          </div>
         </div>
       </div>
 

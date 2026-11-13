@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useFinance } from "../context/FinanceContext";
 import { formatCurrency, getTotals, getAccountBalance } from "../utils/finance";
+import { resolveStandardPeriod } from "../utils/dateRange";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -430,9 +431,46 @@ export const Reports = () => {
           <CalendarSearch className="w-5 h-5 text-blue-500" /> Custom Date Range
           Report
         </h3>
-        <p className="text-sm text-slate-500 dark:text-gray-400 mb-5">
+        <p className="text-sm text-slate-500 dark:text-gray-400 mb-4">
           Analyze cash flows and transactions over any specific period.
         </p>
+        <div className="flex flex-wrap gap-2 mb-5">
+          {(
+            [
+              { key: "this_month", label: "This Month" },
+              { key: "last_month", label: "Last Month" },
+              { key: "this_year", label: "This Year (Jan–Dec)" },
+              { key: "this_fy", label: "This FY (Apr–Mar)" },
+              { key: "last_year", label: "Last Year (Jan–Dec)" },
+              { key: "last_fy", label: "Last FY (Apr–Mar)" },
+            ] as const
+          ).map((preset) => {
+            const bounds = resolveStandardPeriod(preset.key);
+            const isActive =
+              customReport.startDate === bounds.startStr &&
+              customReport.endDate === bounds.endStr;
+            return (
+              <button
+                key={preset.key}
+                type="button"
+                onClick={() =>
+                  setCustomReport({
+                    ...customReport,
+                    startDate: bounds.startStr,
+                    endDate: bounds.endStr,
+                  })
+                }
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                  isActive
+                    ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/20"
+                    : "bg-slate-50 dark:bg-gray-800/70 text-slate-600 dark:text-gray-300 border-slate-200 dark:border-gray-700 hover:bg-slate-100 dark:hover:bg-gray-800"
+                }`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
         <form onSubmit={generateReport} className="flex flex-col gap-4">
           <div className="flex flex-col md:flex-row gap-4 md:items-end">
             <div className="w-full md:w-auto flex-1">

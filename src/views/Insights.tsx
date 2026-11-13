@@ -30,10 +30,16 @@ import {
   startOfMonth,
   endOfMonth,
   subMonths,
-  startOfYear,
-  endOfYear,
+  startOfDay,
+  endOfDay,
+  parseISO,
   isWithinInterval,
 } from "date-fns";
+import {
+  getCalendarYearBounds,
+  getFinancialYearBounds,
+  StandardPeriodKey,
+} from "../utils/dateRange";
 
 const COLORS = [
   "#3b82f6",
@@ -68,7 +74,7 @@ export const Insights = ({
   } = useFinance();
 
   const [dateRange, setDateRange] = useState<
-    "this_month" | "last_month" | "this_year" | "custom"
+    Exclude<StandardPeriodKey, "all">
   >("this_month");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -98,13 +104,38 @@ export const Insights = ({
       prevStartDate = startOfMonth(subMonths(now, 2));
       prevEndDate = endOfMonth(subMonths(now, 2));
     } else if (dateRange === "this_year") {
-      startDate = startOfYear(now);
-      endDate = endOfYear(now);
-      prevStartDate = startOfYear(subMonths(now, 12));
-      prevEndDate = endOfYear(subMonths(now, 12));
+      const cur = getCalendarYearBounds(now, 0);
+      const prev = getCalendarYearBounds(now, -1);
+      startDate = cur.start;
+      endDate = cur.end;
+      prevStartDate = prev.start;
+      prevEndDate = prev.end;
+    } else if (dateRange === "last_year") {
+      const cur = getCalendarYearBounds(now, -1);
+      const prev = getCalendarYearBounds(now, -2);
+      startDate = cur.start;
+      endDate = cur.end;
+      prevStartDate = prev.start;
+      prevEndDate = prev.end;
+    } else if (dateRange === "this_fy") {
+      const cur = getFinancialYearBounds(now, 0);
+      const prev = getFinancialYearBounds(now, -1);
+      startDate = cur.start;
+      endDate = cur.end;
+      prevStartDate = prev.start;
+      prevEndDate = prev.end;
+    } else if (dateRange === "last_fy") {
+      const cur = getFinancialYearBounds(now, -1);
+      const prev = getFinancialYearBounds(now, -2);
+      startDate = cur.start;
+      endDate = cur.end;
+      prevStartDate = prev.start;
+      prevEndDate = prev.end;
     } else {
-      startDate = customStart ? new Date(customStart) : startOfMonth(now);
-      endDate = customEnd ? new Date(customEnd) : endOfMonth(now);
+      startDate = customStart
+        ? startOfDay(parseISO(customStart))
+        : startOfMonth(now);
+      endDate = customEnd ? endOfDay(parseISO(customEnd)) : endOfMonth(now);
       const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
       prevStartDate = new Date(startDate.getTime() - diffTime);
       prevEndDate = new Date(endDate.getTime() - diffTime);
@@ -117,8 +148,8 @@ export const Insights = ({
       const incomeMap: Record<string, { value: number; id: string }> = {};
 
       transactions.forEach((t) => {
-        const txDate = new Date(t.date);
-        if (isWithinInterval(txDate, { start, end })) {
+        const txDate = parseISO(t.date);
+        if (!isNaN(txDate.getTime()) && isWithinInterval(txDate, { start, end })) {
           const drAcc = accounts.find((a) => a.id === t.debitAccount);
           const crAcc = accounts.find((a) => a.id === t.creditAccount);
 
@@ -325,7 +356,10 @@ export const Insights = ({
             >
               <option value="this_month">This Month</option>
               <option value="last_month">Last Month</option>
-              <option value="this_year">This Year</option>
+              <option value="this_year">This Year (Jan–Dec)</option>
+              <option value="this_fy">This Financial Year (Apr–Mar)</option>
+              <option value="last_year">Last Year (Jan–Dec)</option>
+              <option value="last_fy">Last Financial Year (Apr–Mar)</option>
               <option value="custom">Custom Range</option>
             </select>
           </div>

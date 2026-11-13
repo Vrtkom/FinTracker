@@ -8,21 +8,9 @@ import {
 } from "../utils/finance";
 import { Account } from "../types";
 import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
-import {
-  startOfMonth,
-  endOfMonth,
-  subMonths,
-  startOfYear,
-  endOfYear,
-  format,
-} from "date-fns";
+import { resolveStandardPeriod, StandardPeriodKey } from "../utils/dateRange";
 
-export type AccountDateRange =
-  | "all"
-  | "this_month"
-  | "last_month"
-  | "this_year"
-  | "custom";
+export type AccountDateRange = StandardPeriodKey;
 
 export const AccountDetails = ({
   accountId,
@@ -48,22 +36,6 @@ export const AccountDetails = ({
   const [customEnd, setCustomEnd] = useState(initialCustomEnd);
 
   const { startDate, endDate, rangeLabel } = useMemo(() => {
-    const now = new Date();
-    if (dateRange === "this_month") {
-      const s = format(startOfMonth(now), "yyyy-MM-dd");
-      const e = format(endOfMonth(now), "yyyy-MM-dd");
-      return { startDate: s, endDate: e, rangeLabel: "This Month" };
-    }
-    if (dateRange === "last_month") {
-      const s = format(startOfMonth(subMonths(now, 1)), "yyyy-MM-dd");
-      const e = format(endOfMonth(subMonths(now, 1)), "yyyy-MM-dd");
-      return { startDate: s, endDate: e, rangeLabel: "Last Month" };
-    }
-    if (dateRange === "this_year") {
-      const s = format(startOfYear(now), "yyyy-MM-dd");
-      const e = format(endOfYear(now), "yyyy-MM-dd");
-      return { startDate: s, endDate: e, rangeLabel: "This Year" };
-    }
     if (dateRange === "custom") {
       return {
         startDate: customStart || undefined,
@@ -71,7 +43,15 @@ export const AccountDetails = ({
         rangeLabel: customStart && customEnd ? `${customStart} to ${customEnd}` : "Custom Range",
       };
     }
-    return { startDate: undefined, endDate: undefined, rangeLabel: "Overall (All Time)" };
+    if (dateRange === "all") {
+      return { startDate: undefined, endDate: undefined, rangeLabel: "Overall (All Time)" };
+    }
+    const resolved = resolveStandardPeriod(dateRange);
+    return {
+      startDate: resolved.startStr,
+      endDate: resolved.endStr,
+      rangeLabel: resolved.label,
+    };
   }, [dateRange, customStart, customEnd]);
 
   const allAccountTxs = useMemo(() => {
@@ -174,7 +154,10 @@ export const AccountDetails = ({
               <option value="all">Overall (All Time)</option>
               <option value="this_month">This Month</option>
               <option value="last_month">Last Month</option>
-              <option value="this_year">This Year</option>
+              <option value="this_year">This Year (Jan–Dec)</option>
+              <option value="this_fy">This Financial Year (Apr–Mar)</option>
+              <option value="last_year">Last Year (Jan–Dec)</option>
+              <option value="last_fy">Last Financial Year (Apr–Mar)</option>
               <option value="custom">Custom Range</option>
             </select>
           </div>
