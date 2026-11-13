@@ -4,12 +4,6 @@ import path from "path";
 import fs from "fs";
 import { GoogleGenAI, Type } from "@google/genai";
 
-const REVOKED_KEYS = new Set([
-  "AIzaSyBRhhFbQMsVtM-MQNe97LKIfJqPgXLY04A",
-]);
-
-const USER_CONFIGURED_KEY = "AQ.Ab8RN6JiRrJl5z0WvwP_sMHrgptm3pCsE1sOxVLsUiwTShLvEg";
-
 function isValidGeminiApiKey(key: string | undefined): boolean {
   if (!key) return false;
   const k = key.trim();
@@ -18,8 +12,7 @@ function isValidGeminiApiKey(key: string | undefined): boolean {
     k.includes("MY_") ||
     k.includes("YOUR_") ||
     k.startsWith("<") ||
-    k === "MY_GEMINI_API_KEY" ||
-    REVOKED_KEYS.has(k)
+    k === "MY_GEMINI_API_KEY"
   ) {
     return false;
   }
@@ -32,7 +25,7 @@ function getGeminiApiKey(): string | undefined {
     return envKey;
   }
 
-  // Check local .env
+  // Check local .env if present during local development
   const envPath = path.join(process.cwd(), ".env");
   if (fs.existsSync(envPath)) {
     const envContent = fs.readFileSync(envPath, "utf-8");
@@ -42,18 +35,18 @@ function getGeminiApiKey(): string | undefined {
     }
   }
 
-  // Check .env.example
-  const envExamplePath = path.join(process.cwd(), ".env.example");
-  if (fs.existsSync(envExamplePath)) {
-    const exampleContent = fs.readFileSync(envExamplePath, "utf-8");
-    const match = exampleContent.match(/GEMINI_API_KEY=["']?([^"'\r\n]+)["']?/);
-    if (match && match[1] && isValidGeminiApiKey(match[1])) {
-      return match[1].trim();
-    }
-  }
+  return undefined;
+}
 
-  // Fallback to user-provided key
-  return USER_CONFIGURED_KEY;
+function createGeminiClient(apiKey: string) {
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build",
+      },
+    },
+  });
 }
 
 async function startServer() {
@@ -74,26 +67,29 @@ async function startServer() {
       if (!apiKey) {
         return res.status(500).json({
           error:
-            "Gemini API key is not configured in the environment. Please add GEMINI_API_KEY in the AI Studio Secrets panel.",
+            "Gemini API key is not configured. Please add GEMINI_API_KEY in AI Studio Settings > Secrets (and in Vercel Environment Variables if deployed there).",
         });
       }
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = createGeminiClient(apiKey);
 
       const systemInstruction = `You are "FinTrack AI", an intelligent, discreet, and highly competent Personal Financial Advisor & Bookkeeper built inside the user's finance tracker app.
 
-You have direct access to the user's real-time financial ledger data provided in the prompt context.
+You have direct access to BOTH:
+1. The user's **Persistent Financial Memory / Profile** (salary, investments, fixed bills, goals, and custom notes saved permanently across chats).
+2. The user's **Real-Time Financial Ledger Data** (accounts, balances, budgets, recurring bills, and recent transactions).
 
 Financial Context of the user:
 ${contextSummary || "No ledger summary available."}
 
 Guidelines for your responses:
 1. Always be concise, polite, encouraging, and clear.
-2. Provide direct, numbers-backed answers using their ledger data (e.g. mention exact accounts, balances, budgets, recurring bills, and savings rates).
-3. Use currency format (e.g. ₹ or their currency) appropriately.
-4. When suggesting transactions or budget adjustments, be specific and practical.
-5. Format your answers with clean, highly readable markdown. Prefer organized bullet points, bold key figures, and structured sections for fast readability on mobile screens and sidebars. Avoid excessive pipe tables unless presenting concise 2-3 column comparisons. Never output raw ASCII bar clutter or unformatted pipe delimiter lists.
-6. If the user asks you to log a transaction, suggest the exact double-entry pair (debit account for the expense/destination, credit account for payment source).
-7. Respect user privacy and maintain professional financial advice etiquette.`;
+2. Always honor and incorporate details from the user's Persistent Financial Memory (salary, investments, bills, goals, notes) alongside their live ledger data, even in a brand-new or freshly cleared conversation.
+3. Provide direct, numbers-backed answers using their data (e.g. mention exact accounts, balances, salary, SIPs, budgets, recurring bills, and savings rates).
+4. Use currency format (e.g. ₹ or their currency) appropriately.
+5. When suggesting transactions or budget adjustments, be specific and practical.
+6. Format your answers with clean, highly readable markdown. Prefer organized bullet points, bold key figures, and structured sections for fast readability on mobile screens and sidebars. Avoid excessive pipe tables unless presenting concise 2-3 column comparisons. Never output raw ASCII bar clutter or unformatted pipe delimiter lists.
+7. If the user asks you to log a transaction, suggest the exact double-entry pair (debit account for the expense/destination, credit account for payment source).
+8. Respect user privacy and maintain professional financial advice etiquette.`;
 
       // Format messages for @google/genai
       const contents = messages.map((m: { role: string; content: string }) => ({
@@ -101,8 +97,7 @@ Guidelines for your responses:
         parts: [{ text: m.content }],
       }));
 
-      // Candidate models: gemini-3.5-flash is stable and fast, fallback to gemini-3.8-flash or flash-latest
-      const modelsToTry = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-flash-latest"];
+      const modelsToTry = ["gemini-4-hydrogen", "gemini-3.5-flash"];
       let lastErr: any = null;
       let reply: string | undefined = undefined;
 
@@ -120,11 +115,11 @@ Guidelines for your responses:
         } catch (err: any) {
           console.warn(`Model ${model} failed:`, err.message);
           lastErr = err;
-          // If the key is leaked or invalid, don't retry other models
           if (
             err.message?.includes("leaked") ||
             err.message?.includes("API key not valid") ||
-            err.message?.includes("API_KEY_INVALID")
+            err.message?.includes("API_KEY_INVALID") ||
+            err.message?.includes("ACCESS_TOKEN_TYPE_UNSUPPORTED")
           ) {
             throw err;
           }
@@ -132,7 +127,7 @@ Guidelines for your responses:
       }
 
       if (!reply) {
-        throw lastErr || new Error("Failed to generate response from all available models");
+        throw lastErr || new Error("Failed to generate response from Gemini");
       }
 
       res.json({ reply });
@@ -142,10 +137,11 @@ Guidelines for your responses:
       if (
         errMsg.includes("leaked") ||
         errMsg.includes("API key not valid") ||
-        errMsg.includes("API_KEY_INVALID")
+        errMsg.includes("API_KEY_INVALID") ||
+        errMsg.includes("ACCESS_TOKEN_TYPE_UNSUPPORTED")
       ) {
         errMsg =
-          "Your Gemini API key was rejected by Google (reported as leaked or invalid). Please configure a fresh Gemini API key in the AI Studio Secrets panel.";
+          "Your Gemini API key was rejected by Google (invalid, expired, or flagged as leaked). Please create a fresh API key in Google AI Studio and add it to Settings > Secrets (never directly in code).";
       }
       res.status(500).json({ error: errMsg });
     }
@@ -161,13 +157,16 @@ Guidelines for your responses:
 
       const apiKey = getGeminiApiKey();
       if (!apiKey) {
-        return res.status(500).json({ error: "Gemini API key is not configured" });
+        return res.status(500).json({
+          error:
+            "Gemini API key is not configured. Please add GEMINI_API_KEY in AI Studio Settings > Secrets.",
+        });
       }
 
       const base64Data = base64Image.split(",")[1] || base64Image;
       const mimeType = base64Image.includes(";") ? base64Image.split(";")[0].split(":")[1] : "image/jpeg";
 
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = createGeminiClient(apiKey);
       const accountsList = Array.isArray(accounts)
         ? accounts.map((a: any) => `- ${a.name} (ID: ${a.id}, Type: ${a.type})`).join("\n")
         : "";
@@ -187,7 +186,7 @@ Return a JSON object with:
 `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-4-hydrogen",
         contents: [
           {
             inlineData: {
@@ -232,10 +231,13 @@ Return a JSON object with:
 
       const apiKey = getGeminiApiKey();
       if (!apiKey) {
-        return res.status(500).json({ error: "Gemini API key is not configured" });
+        return res.status(500).json({
+          error:
+            "Gemini API key is not configured. Please add GEMINI_API_KEY in AI Studio Settings > Secrets.",
+        });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = createGeminiClient(apiKey);
       const accountsList = Array.isArray(accounts)
         ? accounts.map((a: any) => `- ${a.name} (ID: ${a.id}, Type: ${a.type})`).join("\n")
         : "";
@@ -260,7 +262,7 @@ For expenses, debitAccount is usually the expense category, and creditAccount is
 For income, debitAccount is the receiving account, and creditAccount is the income source.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-4-hydrogen",
         contents: prompt,
         config: {
           responseMimeType: "application/json",

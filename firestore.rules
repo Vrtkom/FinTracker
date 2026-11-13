@@ -231,6 +231,20 @@ service cloud.firestore {
              data.uid == request.auth.uid;
     }
 
+    function isValidAiMemory() {
+      let data = request.resource.data;
+      return hasRequiredFields(['updatedAt', 'uid']) &&
+             data.keys().hasOnly(['salary', 'investments', 'bills', 'goalsAndLoans', 'customNotes', 'updatedAt', 'uid']) &&
+             data.updatedAt is number &&
+             data.uid is string &&
+             data.uid == request.auth.uid &&
+             (!('salary' in data) || (data.salary is string && data.salary.size() <= 2000)) &&
+             (!('investments' in data) || (data.investments is string && data.investments.size() <= 2000)) &&
+             (!('bills' in data) || (data.bills is string && data.bills.size() <= 2000)) &&
+             (!('goalsAndLoans' in data) || (data.goalsAndLoans is string && data.goalsAndLoans.size() <= 2000)) &&
+             (!('customNotes' in data) || (data.customNotes is string && data.customNotes.size() <= 4000));
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -311,6 +325,13 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidReverseBudget();
         allow update: if isOwner(userId) && isValidReverseBudget();
         allow delete: if isOwner(userId);
+      }
+
+      match /settings/aiMemory {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidAiMemory() && uidUnchanged();
+        allow update: if isOwner(userId) && isDocOwner() && isValidAiMemory() && uidNotModified();
+        allow delete: if isOwner(userId) && isDocOwner();
       }
 
       match /chatMessages/{messageId} {

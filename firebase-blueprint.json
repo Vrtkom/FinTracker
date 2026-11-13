@@ -192,6 +192,21 @@
         "uid": { "type": "string" }
       },
       "required": ["id", "role", "content", "timestamp", "uid"]
+    },
+    "AiMemory": {
+      "title": "AiMemory",
+      "description": "Persistent user-provided financial context (salary, investments, bills, goals, notes) retained across cleared/new AI chats",
+      "type": "object",
+      "properties": {
+        "salary": { "type": "string", "maxLength": 2000 },
+        "investments": { "type": "string", "maxLength": 2000 },
+        "bills": { "type": "string", "maxLength": 2000 },
+        "goalsAndLoans": { "type": "string", "maxLength": 2000 },
+        "customNotes": { "type": "string", "maxLength": 4000 },
+        "updatedAt": { "type": "number" },
+        "uid": { "type": "string" }
+      },
+      "required": ["updatedAt", "uid"]
     }
   },
   "firestore": {
@@ -234,6 +249,10 @@
     "/users/{userId}/settings/reverseBudget": {
       "schema": { "$ref": "#/entities/ReverseBudget" },
       "description": "User's Reverse Budget and Splurge Pot configuration"
+    },
+    "/users/{userId}/settings/aiMemory": {
+      "schema": { "$ref": "#/entities/AiMemory" },
+      "description": "Persistent AI Copilot financial memory independent of chat history"
     },
     "/users/{userId}/chatMessages/{messageId}": {
       "schema": { "$ref": "#/entities/ChatMessage" },

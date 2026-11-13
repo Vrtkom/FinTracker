@@ -156,3 +156,14 @@ export interface ChatMessage {
   timestamp: number;
   uid?: string;
 }
+
+export interface AiMemory {
+  salary?: string;
+  investments?: string;
+  bills?: string;
+  goalsAndLoans?: string;
+  customNotes?: string;
+  updatedAt?: number;
+  uid?: string;
+}
+

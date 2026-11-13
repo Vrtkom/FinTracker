@@ -18,6 +18,7 @@ import {
   PortfolioItem,
   ReverseBudgetConfig,
   ChatMessage,
+  AiMemory,
 } from "../types";
 import { auth, db, signInWithGoogle, logout } from "../firebase";
 import {
@@ -117,6 +118,8 @@ interface FinanceContextType {
   chatMessages: ChatMessage[];
   addChatMessage: (msg: Omit<ChatMessage, "id" | "timestamp" | "uid">) => Promise<ChatMessage>;
   clearChatMessages: () => Promise<void>;
+  aiMemory: AiMemory;
+  saveAiMemory: (memory: Omit<AiMemory, "updatedAt" | "uid">) => Promise<void>;
   isAiDrawerOpen: boolean;
   setIsAiDrawerOpen: (open: boolean) => void;
 
@@ -214,6 +217,14 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
   const [customReport, setCustomReport] = useState<CustomReport>(defaultReport);
   const [activityStreak, setActivityStreak] = useState<number>(0);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [aiMemory, setAiMemory] = useState<AiMemory>(() => {
+    try {
+      const saved = localStorage.getItem("fintrack_ai_memory");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState<boolean>(false);
 
   useEffect(() => {
@@ -230,6 +241,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
         setPortfolioItemsState([]);
         setTemplatesState([]);
         setChatMessages([]);
+        setAiMemory({});
         setActivityStreak(0);
       }
     });
@@ -465,6 +477,26 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       },
     );
 
+    const unsubAiMemory = onSnapshot(
+      doc(db, `users/${user.uid}/settings/aiMemory`),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as AiMemory;
+          setAiMemory(data);
+          localStorage.setItem("fintrack_ai_memory", JSON.stringify(data));
+        } else {
+          setAiMemory({});
+        }
+      },
+      (error) => {
+        handleFirestoreError(
+          error,
+          OperationType.GET,
+          `users/${user.uid}/settings/aiMemory`,
+        );
+      },
+    );
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         // Trigger a re-read of the document to update streak if day changed
@@ -516,6 +548,7 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
       unsubPreferences();
       unsubReverseBudget();
       unsubChatMessages();
+      unsubAiMemory();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [user, isAuthReady]);
@@ -812,6 +845,30 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const saveAiMemory = async (memory: Omit<AiMemory, "updatedAt" | "uid">) => {
+    const cleanMemory: AiMemory = {
+      salary: (memory.salary || "").trim().slice(0, 2000),
+      investments: (memory.investments || "").trim().slice(0, 2000),
+      bills: (memory.bills || "").trim().slice(0, 2000),
+      goalsAndLoans: (memory.goalsAndLoans || "").trim().slice(0, 2000),
+      customNotes: (memory.customNotes || "").trim().slice(0, 4000),
+      updatedAt: Date.now(),
+      ...(user ? { uid: user.uid } : {}),
+    };
+
+    setAiMemory(cleanMemory);
+    localStorage.setItem("fintrack_ai_memory", JSON.stringify(cleanMemory));
+
+    if (user) {
+      const memoryPath = `users/${user.uid}/settings/aiMemory`;
+      try {
+        await setDoc(doc(db, memoryPath), cleanMemory);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, memoryPath);
+      }
+    }
+  };
+
   return (
     <FinanceContext.Provider
       value={{
@@ -872,6 +929,8 @@ export const FinanceProvider = ({ children }: { children: ReactNode }) => {
         chatMessages,
         addChatMessage,
         clearChatMessages,
+        aiMemory,
+        saveAiMemory,
         isAiDrawerOpen,
         setIsAiDrawerOpen,
         clearAllData,
